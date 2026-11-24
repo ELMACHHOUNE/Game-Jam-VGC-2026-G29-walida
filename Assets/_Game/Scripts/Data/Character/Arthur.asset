@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc23846cc140d94786019defbcf886f, type: 3}
+  m_Name: Arthur
+  m_EditorClassIdentifier: Assembly-CSharp::VNCharacterData
+  characterId: Arthur
+  displayName: Arthur Morgan
+  nameColor: {r: 0.93207544, g: 0.05451757, b: 0.19053829, a: 1}
+  expressions:
+  - key: neutral
+    sprite: {fileID: 7353740402459472725, guid: b164cc75284f06b4c99d194655547d57, type: 3}

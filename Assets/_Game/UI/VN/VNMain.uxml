@@ -1,0 +1,65 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="VNMain.uss" />
+
+    <ui:VisualElement name="vn-root" class="vn-root" picking-mode="Ignore">
+
+        <!-- LAYER 1: Dual-buffer Backgrounds -->
+        <ui:VisualElement name="layer-background" class="fullscreen-layer" picking-mode="Ignore">
+            <ui:VisualElement name="bg-back" class="bg-slot" picking-mode="Ignore" />
+            <ui:VisualElement name="bg-front" class="bg-slot" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <!-- LAYER 2: Character Stage -->
+        <ui:VisualElement name="layer-stage" class="fullscreen-layer stage-layer" picking-mode="Ignore" />
+
+        <!-- LAYER 3: Full-screen Event CG Overlay -->
+        <ui:VisualElement name="layer-cg" class="fullscreen-layer bg-slot" picking-mode="Ignore" />
+
+        <!-- LAYER 4: Click-to-Advance Catcher -->
+        <ui:VisualElement name="advance-surface" class="fullscreen-layer" picking-mode="Position" />
+
+        <!-- LAYER 5A: Top-Right Icon Controls (Autoplay, Skip Scene, Pause) -->
+        <ui:VisualElement name="top-bar" class="top-bar" picking-mode="Position">
+            <ui:Button name="btn-autoplay" class="icon-btn" tooltip="Autoplay">
+                <ui:VisualElement name="icon-autoplay" class="icon-btn__glyph" picking-mode="Ignore" />
+            </ui:Button>
+
+            <ui:Button name="btn-skip" class="icon-btn" tooltip="Skip to Next Scene">
+                <ui:VisualElement name="icon-skip" class="icon-btn__glyph" picking-mode="Ignore" />
+            </ui:Button>
+
+            <ui:Button name="btn-pause" class="icon-btn" tooltip="Pause">
+                <ui:VisualElement name="icon-pause" class="icon-btn__glyph" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
+
+        <!-- LAYER 5B: Bottom Dialogue Box Only -->
+        <ui:VisualElement name="layer-hud" class="hud-layer" picking-mode="Ignore">
+            <ui:VisualElement name="dialogue-box" class="dialogue-box" picking-mode="Position">
+                <ui:VisualElement name="nameplate" class="nameplate" picking-mode="Ignore">
+                    <ui:Label name="speaker-label" class="speaker-label" text="" picking-mode="Ignore" />
+                </ui:VisualElement>
+
+                <ui:Label name="dialogue-label" class="dialogue-label" text="" picking-mode="Ignore" />
+                <ui:VisualElement name="continue-indicator" class="continue-indicator" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- LAYER 6: Branching Choice Overlay -->
+        <ui:VisualElement name="layer-choices" class="fullscreen-layer choice-overlay" picking-mode="Position">
+            <ui:VisualElement name="choice-list" class="choice-list" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <!-- LAYER 7: Pause Menu Overlay -->
+        <ui:VisualElement name="layer-modal" class="fullscreen-layer modal-overlay" picking-mode="Position">
+            <ui:VisualElement name="pause-menu" class="pause-panel" picking-mode="Position">
+                <ui:Label text="PAUSED" class="pause-title" picking-mode="Ignore" />
+                <ui:Button name="btn-resume" class="pause-btn" text="RESUME" />
+                <ui:Button name="btn-pause-save" class="pause-btn" text="SAVE" />
+                <ui:Button name="btn-pause-load" class="pause-btn" text="LOAD" />
+                <ui:Button name="btn-pause-quit" class="pause-btn pause-btn--danger" text="QUIT TO TITLE" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
