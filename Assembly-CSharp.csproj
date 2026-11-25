@@ -10,7 +10,7 @@
     <ProductVersion>10.0.20506</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <RootNamespace></RootNamespace>
-    <ProjectGuid>{D3F3FA10-7512-4E87-649C-7DC2B3C4C704}</ProjectGuid>
+    <ProjectGuid>{1D64177B-164C-8E31-0EC6-B37BBF01AA5B}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <AssemblyName>Assembly-CSharp</AssemblyName>
@@ -61,26 +61,72 @@
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\6000.6.9f1\Editor\Data\Tools\BuildPipeline\Unity.SourceGenerators\Unity.UIToolkit.SourceGenerator.dll" />
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\6000.6.9f1\Editor\Data\Tools\BuildPipeline\Unity.Analyzers\Unity.Analyzers.Common.dll" />
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\6000.6.9f1\Editor\Data\Tools\BuildPipeline\Unity.Analyzers\Unity.Analyzers.LongLiving.dll" />
-    <Analyzer Include="C:\Users\Administrator\Walida\Library\PackageCache\com.unity.ai.inference@9a123aee5df7\Runtime\Core\SourceGenerator\SourceGenerators.dll" />
-    <Analyzer Include="C:\Users\Administrator\Walida\Library\PackageCache\com.unity.pipeline@c0af79690db1\Runtime\Analyzers\IlInterpreterAnalyzer.dll" />
-    <Analyzer Include="C:\Users\Administrator\Walida\Library\PackageCache\com.unity.dt.app-ui@75f968a5ae23\Runtime\SourceGenerators\netstandard2.0\EnumToLowerCase.dll" />
-    <Analyzer Include="C:\Users\Administrator\Walida\Library\PackageCache\com.unity.dt.app-ui@75f968a5ae23\Runtime\SourceGenerators\netstandard2.0\UxmlCloneTreeGenerator.dll" />
-    <Analyzer Include="C:\Users\Administrator\Walida\Library\PackageCache\com.unity.dt.app-ui@75f968a5ae23\Runtime\MVVM\SourceGenerators\netstandard2.0\MVVMSourceGenerators.dll" />
+    <Analyzer Include="C:\Ibn Tofail\Game-Jam-VGC-2026-G29-walida\Library\PackageCache\com.unity.ai.inference@9a123aee5df7\Runtime\Core\SourceGenerator\SourceGenerators.dll" />
+    <Analyzer Include="C:\Ibn Tofail\Game-Jam-VGC-2026-G29-walida\Library\PackageCache\com.unity.pipeline@c0af79690db1\Runtime\Analyzers\IlInterpreterAnalyzer.dll" />
+    <Analyzer Include="C:\Ibn Tofail\Game-Jam-VGC-2026-G29-walida\Library\PackageCache\com.unity.dt.app-ui@75f968a5ae23\Runtime\SourceGenerators\netstandard2.0\EnumToLowerCase.dll" />
+    <Analyzer Include="C:\Ibn Tofail\Game-Jam-VGC-2026-G29-walida\Library\PackageCache\com.unity.dt.app-ui@75f968a5ae23\Runtime\SourceGenerators\netstandard2.0\UxmlCloneTreeGenerator.dll" />
+    <Analyzer Include="C:\Ibn Tofail\Game-Jam-VGC-2026-G29-walida\Library\PackageCache\com.unity.dt.app-ui@75f968a5ae23\Runtime\MVVM\SourceGenerators\netstandard2.0\MVVMSourceGenerators.dll" />
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\6000.6.9f1\Editor\Data\BCLExtensions\TargetingPacks\netstandard2.1\analyzers\dotnet\roslyn4.0\cs\Microsoft.Extensions.Logging.Generators.dll" />
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\6000.6.9f1\Editor\Data\BCLExtensions\TargetingPacks\netstandard2.1\analyzers\dotnet\roslyn4.0\cs\System.Text.Json.SourceGeneration.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\_Game\Data\VNCharacterData.cs" />
+    <Compile Include="Assets\_Game\Scripts\Photography\PhotoDialogueTrigger.cs" />
+    <Compile Include="Assets\_Game\Scripts\MainMenu\MainMenuController.cs" />
     <Compile Include="Assets\_Game\Scripts\VN\VNShowcaseHarness.cs" />
-    <Compile Include="Assets\_Game\Scripts\Data\VNCharacterData.cs" />
+    <Compile Include="Assets\_Game\Scripts\VN\VNSaveManager.cs" />
+    <Compile Include="Assets\_Game\Scripts\Photography\PhonePhotoCapturer.cs" />
+    <Compile Include="Assets\_Game\Scripts\AudioRecording\SpatialAudioPhoneController.cs" />
+    <Compile Include="Assets\_Game\Scripts\AudioRecording\AudioMixCaptureTap.cs" />
+    <Compile Include="Assets\_Game\Scripts\Settings\VNSettingsManager.cs" />
+    <Compile Include="Assets\_Game\Scripts\Settings\VNSettingsView.cs" />
+    <Compile Include="Assets\_Game\Scripts\AudioRecording\AudioRecordingStorage.cs" />
+    <Compile Include="Assets\_Game\Scripts\Photography\PhotoStorage.cs" />
+    <Compile Include="Assets\_Game\Scripts\AudioRecording\RecordableSoundSource.cs" />
     <Compile Include="Assets\_Game\Scripts\VN\VNStageView.cs" />
+    <Compile Include="Assets\_Game\Scripts\Photography\PanoramaEdgeScroller.cs" />
+    <Compile Include="Assets\_Game\Scripts\Photography\PhotographableCharacter.cs" />
+    <Compile Include="Assets\_Game\Scripts\Photography\PhoneCursorController.cs" />
     <Compile Include="Assets\_Game\Scripts\VN\VNStoryController.cs" />
+    <Compile Include="Assets\_Game\Scripts\VNBootstrapper.cs" />
     <Compile Include="Assets\Ink\Demos\Basic Demo\Scripts\QuitGameOnKeypress.cs" />
     <Compile Include="Assets\Ink\Demos\Basic Demo\Scripts\BasicInkExample.cs" />
+    <Compile Include="Assets\_Game\Scripts\AudioRecording\AudioDialogueTrigger.cs" />
+    <Compile Include="Assets\_Game\Scripts\Photography\PhoneArmStretch.cs" />
+    <Compile Include="Assets\_Game\Scripts\VN\VNSessionBridge.cs" />
     <Compile Include="Assets\_Game\Scripts\VN\RichTextTypewriter.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Overlay.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile-2-Pass.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Mobile.cginc" />
+    <None Include="Assets\_Game\UI\MainMenu\MainMenu.uxml" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SSD.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface-Mobile.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SpaceWarp.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\SDFFunctions.hlsl" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface.shader" />
+    <None Include="Assets\_Game\UI\MainMenu\MainMenu.uss" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Custom-Atlas.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile SSD.shader" />
     <None Include="Assets\_Game\UI\VN\VNMain.uxml" />
+    <None Include="Assets\TextMesh Pro\Resources\LineBreaking Leading Characters.txt" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Properties.cginc" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Surface.cginc" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile SpaceWarp.shader" />
+    <None Include="Assets\TextMesh Pro\Resources\LineBreaking Following Characters.txt" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SSD SpaceWarp.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Masking.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF Overlay.shader" />
     <None Include="Assets\_Game\UI\VN\VNMain.uss" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Mobile.shader" />
+    <None Include="Assets\TextMesh Pro\Fonts\LiberationSans - OFL.txt" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile SSD SpaceWarp.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Sprite.shader" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
@@ -1770,15 +1816,15 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="InkEditor.csproj">
-      <Project>{167FA107-4B29-B069-2D79-EABFE3A77164}</Project>
+      <Project>{1E519EC3-6694-3152-6133-0F87FC8B4875}</Project>
       <Name>InkEditor</Name>
     </ProjectReference>
     <ProjectReference Include="Unity.2D.Welcome.csproj">
-      <Project>{5E91EDEA-3F44-7213-590A-DDC56D15B5D9}</Project>
+      <Project>{D952F610-1611-D59C-438E-31270EFC4705}</Project>
       <Name>Unity.2D.Welcome</Name>
     </ProjectReference>
     <ProjectReference Include="Ink-Libraries.csproj">
-      <Project>{9FD649FC-BE60-44B7-476C-D31810D92A45}</Project>
+      <Project>{48C290C1-C1D7-AEC4-9103-B9A9FA5F2A5E}</Project>
       <Name>Ink-Libraries</Name>
     </ProjectReference>
   </ItemGroup>

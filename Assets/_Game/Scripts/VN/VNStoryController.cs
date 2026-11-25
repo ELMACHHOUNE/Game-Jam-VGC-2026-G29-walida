@@ -26,6 +26,16 @@ public class VNStoryController : MonoBehaviour
     [SerializeField] private VNStageView stageView;
     [SerializeField] private TextAsset inkJsonAsset;
 
+    [Header("Feature Toggles")]
+    [SerializeField] private bool enableAutoplay = false;
+    [SerializeField] private bool enableSkip = false;
+
+    [Header("Backlog")]
+    [SerializeField, Min(10)] private int maxBacklogEntries = 150;
+
+    [Header("Scene Navigation")]
+    [SerializeField] private string mainMenuSceneName = "MainMenu";
+
     [Header("Stage Sprite Registries")]
     [SerializeField] private List<NamedSprite> backgrounds = new();
     [SerializeField] private List<NamedSprite> eventCGs = new();
@@ -53,12 +63,18 @@ public class VNStoryController : MonoBehaviour
     [SerializeField] private InputActionReference advanceInputAction;
     [SerializeField] private InputActionReference toggleAutoInputAction;
 
+    [Header("Exploration Integration")]
+    [SerializeField] private bool startStoryOnBoot = false;
+
     private Story _story;
     private readonly Dictionary<string, Sprite> _bgLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Sprite> _cgLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _visitedChoicePaths = new();
     private readonly Dictionary<string, AudioClip> _sfxLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AudioClip> _bgmLookup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<VNBacklogEntry> _backlog = new();
+    public event Action OnDialogueEnded;
+
 
     private AudioSource _activeBgmSource;
     private string _currentBgmId = string.Empty;
@@ -68,6 +84,10 @@ public class VNStoryController : MonoBehaviour
     private bool _hasStarted;
     private bool _areChoicesVisible;
     private CancellationTokenSource _modeCts;
+    private string _currentBgId = string.Empty;
+    private string _currentCgId = string.Empty;
+    private string _lastSpeaker = string.Empty;
+    private string _lastDialogue = string.Empty;
 
     public Story CurrentStory => _story;
     public bool IsAutoMode => _isAutoMode;
@@ -110,6 +130,15 @@ public class VNStoryController : MonoBehaviour
         _activeBgmSource = bgmSourceA;
     }
 
+    private void OnValidate()
+    {
+        if (!enableAutoplay && _isAutoMode)
+            SetAutoMode(false);
+
+        if (stageView != null)
+            stageView.SetTopBarFeatureVisibility(enableAutoplay, enableSkip);
+    }
+
     private void OnEnable()
     {
         if (stageView == null)
@@ -117,6 +146,10 @@ public class VNStoryController : MonoBehaviour
             Debug.LogError("[VNStoryController] VNStageView reference is missing.");
             return;
         }
+
+        if (VNSettingsManager.Instance != null)
+            VNSettingsManager.Instance.OnSettingsChanged += ApplyAudioSettings;
+        ApplyAudioSettings();
 
         stageView.OnViewReady += HandleViewReady;
         stageView.OnAdvanceRequested += HandleAdvanceRequested;
@@ -126,6 +159,14 @@ public class VNStoryController : MonoBehaviour
         stageView.OnPauseClicked += TogglePause;
         stageView.OnResumeClicked += HandleResumeClicked;
         stageView.OnLineTypingCompleted += HandleLineTypingCompleted;
+        stageView.OnSaveClicked += OpenSaveModal;
+        stageView.OnLoadClicked += OpenLoadModal;
+        stageView.OnSaveSlotSelected += HandleSaveSlotSelected;
+        stageView.OnSaveLoadBackClicked += () => stageView.ShowPauseMenu(true);
+        stageView.OnQuitClicked += QuitToMainMenu;
+        stageView.OnLogClicked += OpenBacklogModal;
+        stageView.OnBacklogBackClicked += CloseBacklogModal;
+        stageView.SetTopBarFeatureVisibility(enableAutoplay, enableSkip);
 
         if (advanceInputAction != null && advanceInputAction.action != null)
         {
@@ -148,6 +189,10 @@ public class VNStoryController : MonoBehaviour
         CancelModeTimer();
         Time.timeScale = 1f;
 
+        // Inside OnDisable():
+        if (VNSettingsManager.Instance != null)
+            VNSettingsManager.Instance.OnSettingsChanged -= ApplyAudioSettings;
+
         if (stageView != null)
         {
             stageView.OnViewReady -= HandleViewReady;
@@ -158,6 +203,12 @@ public class VNStoryController : MonoBehaviour
             stageView.OnPauseClicked -= TogglePause;
             stageView.OnResumeClicked -= HandleResumeClicked;
             stageView.OnLineTypingCompleted -= HandleLineTypingCompleted;
+            stageView.OnSaveClicked -= OpenSaveModal;
+            stageView.OnLoadClicked -= OpenLoadModal;
+            stageView.OnSaveSlotSelected -= HandleSaveSlotSelected;
+            stageView.OnQuitClicked -= QuitToMainMenu;
+            stageView.OnLogClicked -= OpenBacklogModal;
+            stageView.OnBacklogBackClicked -= CloseBacklogModal;
         }
 
         if (advanceInputAction != null && advanceInputAction.action != null)
@@ -169,17 +220,57 @@ public class VNStoryController : MonoBehaviour
 
     private void Update()
     {
+        if (!stageView.IsDialogueVisible) return;
+
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             TogglePause();
     }
 
+    private void ApplyAudioSettings()
+    {
+        if (VNSettingsManager.Instance == null) return;
+
+        bgmVolume = VNSettingsManager.Instance.BgmVolume;
+        sfxVolume = VNSettingsManager.Instance.SfxVolume;
+
+        if (_activeBgmSource != null && _activeBgmSource.isPlaying && !_bgmFadeTween.IsActive())
+            _activeBgmSource.volume = bgmVolume;
+    }
+
     private void HandleViewReady()
     {
+        stageView.SetTopBarFeatureVisibility(enableAutoplay, enableSkip);
         if (_hasStarted) return;
         _hasStarted = true;
 
-        if (inkJsonAsset != null)
+        if (inkJsonAsset == null) return;
+
+        if (VNSessionBridge.LaunchMode == VNLaunchMode.ContinueLatest && VNSaveManager.Instance != null)
+        {
+            VNSaveData latest = VNSaveManager.Instance.GetLatestSave();
+            if (latest != null)
+            {
+                stageView.SetDialogueVisible(true);
+                LoadFromSaveData(latest);
+                return;
+            }
+        }
+        else if (VNSessionBridge.LaunchMode == VNLaunchMode.LoadSpecificSlot && VNSaveManager.Instance != null)
+        {
+            VNSaveData target = VNSaveManager.Instance.LoadFromSlot(VNSessionBridge.TargetSlotId);
+            if (target != null)
+            {
+                stageView.SetDialogueVisible(true);
+                LoadFromSaveData(target);
+                return;
+            }
+        }
+
+        if (startStoryOnBoot)
+        {
+            stageView.SetDialogueVisible(true);
             LoadStory(inkJsonAsset);
+        }
     }
 
     private AudioSource CreateChildAudioSource(string childName, bool loop)
@@ -243,6 +334,7 @@ public class VNStoryController : MonoBehaviour
         SetAutoMode(false);
         _areChoicesVisible = false;
         _visitedChoicePaths.Clear();
+        _backlog.Clear();
         stageView.HideChoices();
 
         _story = new Story(compiledInkJson.text);
@@ -312,6 +404,9 @@ public class VNStoryController : MonoBehaviour
 
             _areChoicesVisible = false;
             ExtractSpeakerAndText(trimmedLine, speakerOverride, out string speaker, out string dialogue);
+            RecordBacklogEntry(speaker, dialogue, isChoice: false);
+            _lastSpeaker = speaker;
+            _lastDialogue = dialogue;
             stageView.PresentLine(speaker, dialogue, instant: instantPresentation);
             return;
         }
@@ -324,7 +419,7 @@ public class VNStoryController : MonoBehaviour
         {
             _areChoicesVisible = false;
             SetAutoMode(false);
-            stageView.PresentLine(string.Empty, "<i>[End of Script]</i>", instant: true);
+            OnDialogueEnded?.Invoke();
         }
     }
 
@@ -364,6 +459,7 @@ public class VNStoryController : MonoBehaviour
                     {
                         string bgId = parts[1].Trim();
                         bool forceInstant = instant || (parts.Length >= 3 && parts[2].Trim().Equals("instant", StringComparison.OrdinalIgnoreCase));
+                        _currentBgId = bgId.Equals("none", StringComparison.OrdinalIgnoreCase) ? string.Empty : bgId;
 
                         if (bgId.Equals("none", StringComparison.OrdinalIgnoreCase))
                             stageView.SetBackground(null, forceInstant);
@@ -378,6 +474,7 @@ public class VNStoryController : MonoBehaviour
                     {
                         string cgId = parts[1].Trim();
                         bool forceInstant = instant || (parts.Length >= 3 && parts[2].Trim().Equals("instant", StringComparison.OrdinalIgnoreCase));
+                        _currentCgId = (cgId.Equals("hide", StringComparison.OrdinalIgnoreCase) || cgId.Equals("none", StringComparison.OrdinalIgnoreCase)) ? string.Empty : cgId;
 
                         if (cgId.Equals("hide", StringComparison.OrdinalIgnoreCase) || cgId.Equals("none", StringComparison.OrdinalIgnoreCase))
                             stageView.HideEventCG(forceInstant);
@@ -461,6 +558,7 @@ public class VNStoryController : MonoBehaviour
                     {
                         stageView.ClearAllCharacters();
                         stageView.HideEventCG(instant);
+                        _currentCgId = string.Empty;
                         break;
                     }
             }
@@ -504,7 +602,7 @@ public class VNStoryController : MonoBehaviour
 
     private void HandleAdvanceRequested()
     {
-        if (_story == null || _isPaused) return;
+        if (_story == null || _isPaused || !stageView.IsDialogueVisible) return;
 
         if (_isAutoMode && cancelAutoOnManualClick)
             SetAutoMode(false);
@@ -528,18 +626,178 @@ public class VNStoryController : MonoBehaviour
             return;
 
         Choice chosen = _story.currentChoices[choiceIndex];
+        string chosenText = chosen.text.Trim();
+
         if (!string.IsNullOrEmpty(chosen.pathStringOnChoice))
             _visitedChoicePaths.Add(chosen.pathStringOnChoice);
 
+        RecordBacklogEntry("CHOICE", chosenText, isChoice: true);
+
         _areChoicesVisible = false;
         _story.ChooseChoiceIndex(choiceIndex);
+
         StepStory(instantPresentation: false);
+        SaveCheckpoint();
     }
 
-    public void ToggleAutoMode() => SetAutoMode(!_isAutoMode);
+    public void SaveCheckpoint()
+    {
+        if (_story == null || VNSaveManager.Instance == null)
+            return;
+
+        VNSaveData data = CaptureSaveData("Checkpoint");
+        VNSaveManager.Instance.SaveToSlot(VNSaveManager.AutosaveSlotId, data);
+    }
+
+    public VNSaveData CaptureSaveData(string label)
+    {
+        return new VNSaveData
+        {
+            backlog = new List<VNBacklogEntry>(_backlog),
+            label = label,
+            inkStateJson = _story.state.ToJson(),
+            visitedChoicePaths = new List<string>(_visitedChoicePaths),
+            speaker = _lastSpeaker,
+            dialogue = _lastDialogue,
+            isWaitingForChoice = _areChoicesVisible,
+            backgroundId = _currentBgId,
+            eventCgId = _currentCgId,
+            bgmId = _currentBgmId,
+            activeSpeakerId = stageView.GetActiveSpeakerId(),
+            characters = stageView.CaptureCharacterStates()
+        };
+    }
+
+    public void LoadFromSaveData(VNSaveData data)
+    {
+        if (data == null || inkJsonAsset == null)
+            return;
+
+        SetPaused(false);
+        SetAutoMode(false);
+        CancelModeTimer();
+
+        _story = new Story(inkJsonAsset.text);
+        _story.state.LoadJson(data.inkStateJson);
+
+        _visitedChoicePaths.Clear();
+        if (data.visitedChoicePaths != null)
+        {
+            foreach (string path in data.visitedChoicePaths)
+                _visitedChoicePaths.Add(path);
+        }
+
+        // 1. Restore Background & Event CG instantly
+        _currentBgId = data.backgroundId ?? string.Empty;
+        if (!string.IsNullOrEmpty(_currentBgId) && _bgLookup.TryGetValue(_currentBgId, out Sprite bgSprite))
+            stageView.SetBackground(bgSprite, instant: true);
+        else
+            stageView.SetBackground(null, instant: true);
+
+        _currentCgId = data.eventCgId ?? string.Empty;
+        if (!string.IsNullOrEmpty(_currentCgId) && _cgLookup.TryGetValue(_currentCgId, out Sprite cgSprite))
+            stageView.ShowEventCG(cgSprite, instant: true);
+        else
+            stageView.HideEventCG(instant: true);
+
+        // 2. Restore BGM
+        if (!string.IsNullOrEmpty(data.bgmId))
+            PlayBGM(data.bgmId, instant: true);
+        else
+            StopBGM(instant: true);
+
+        // 3. Restore Characters & Speaker Highlight
+        stageView.RestoreCharacterStates(data.characters, data.activeSpeakerId);
+
+        // 4. Restore Dialogue & Pending Choices
+        _lastSpeaker = data.speaker ?? string.Empty;
+        _lastDialogue = data.dialogue ?? string.Empty;
+        stageView.HideChoices();
+        _backlog.Clear();
+        if (data.backlog != null)
+            _backlog.AddRange(data.backlog);
+
+        if (data.isWaitingForChoice && _story.currentChoices.Count > 0)
+        {
+            stageView.PresentLine(_lastSpeaker, _lastDialogue, instant: true);
+            PresentCurrentChoices();
+        }
+        else
+        {
+            _areChoicesVisible = false;
+            stageView.PresentLine(_lastSpeaker, _lastDialogue, instant: false);
+        }
+    }
+
+    private void RecordBacklogEntry(string speaker, string text, bool isChoice)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        if (_backlog.Count >= maxBacklogEntries)
+            _backlog.RemoveAt(0);
+
+        _backlog.Add(new VNBacklogEntry
+        {
+            speaker = speaker ?? string.Empty,
+            text = text,
+            isChoice = isChoice
+        });
+    }
+
+    private void OpenSaveModal()
+    {
+        if (VNSaveManager.Instance == null) return;
+        // Manual Save shows Slots 1-3 (Autosave is reserved for automatic choice checkpoints)
+        var slots = VNSaveManager.Instance.GetAllSlotSummaries(includeAutosave: false);
+        stageView.ShowSaveLoadModal(isSaveMode: true, slots);
+    }
+
+    private void OpenLoadModal()
+    {
+        if (VNSaveManager.Instance == null) return;
+        // Load shows Autosave Checkpoint + Slots 1-3
+        var slots = VNSaveManager.Instance.GetAllSlotSummaries(includeAutosave: true);
+        stageView.ShowSaveLoadModal(isSaveMode: false, slots);
+    }
+
+    private void HandleSaveSlotSelected(bool isSaveMode, string slotId)
+    {
+        if (VNSaveManager.Instance == null) return;
+
+        if (isSaveMode)
+        {
+            VNSaveData data = CaptureSaveData(slotId.ToUpperInvariant());
+            VNSaveManager.Instance.SaveToSlot(slotId, data);
+            OpenSaveModal(); // Refresh slot timestamps and previews immediately
+        }
+        else
+        {
+            VNSaveData data = VNSaveManager.Instance.LoadFromSlot(slotId);
+            if (data != null)
+                LoadFromSaveData(data);
+        }
+    }
+
+    private async void QuitToMainMenu()
+    {
+        CancelModeTimer();
+        Time.timeScale = 1f;
+        VNSessionBridge.LaunchMode = VNLaunchMode.NewGame;
+        await UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(mainMenuSceneName);
+    }
+
+    public void ToggleAutoMode()
+    {
+        if (!enableAutoplay) return;
+        SetAutoMode(!_isAutoMode);
+    }
 
     public void SetAutoMode(bool enabled)
     {
+        if (!enableAutoplay)
+            enabled = false;
+
         if (_isAutoMode == enabled) return;
         _isAutoMode = enabled;
         stageView.SetAutoState(_isAutoMode);
@@ -555,34 +813,25 @@ public class VNStoryController : MonoBehaviour
         }
     }
 
-    public void TogglePause() => SetPaused(!_isPaused);
+    public void TogglePause() => SetPaused(!_isPaused, showPauseMenu: true);
 
-    public void SetPaused(bool paused)
+    public void SetPaused(bool paused, bool showPauseMenu = true)
     {
+        if (_isPaused == paused)
+        {
+            if (!paused)
+                stageView.ShowPauseMenu(false);
+            return;
+        }
 
-        if (_isPaused == paused) return;
         _isPaused = paused;
 
         if (_isPaused)
         {
             CancelModeTimer();
             Time.timeScale = 0f;
-            if (pauseAudioOnPauseMenu)
-            {
-                if (paused)
-                {
-                    sfxAudioSource?.Pause();
-                    bgmSourceA?.Pause();
-                    bgmSourceB?.Pause();
-                }
-                else
-                {
-                    sfxAudioSource?.UnPause();
-                    bgmSourceA?.UnPause();
-                    bgmSourceB?.UnPause();
-                }
-            }
-            stageView.ShowPauseMenu(true);
+            if (showPauseMenu)
+                stageView.ShowPauseMenu(true);
         }
         else
         {
@@ -592,11 +841,39 @@ public class VNStoryController : MonoBehaviour
             if (_isAutoMode && !stageView.IsTyping && _story != null && !_areChoicesVisible)
                 StartDelayedAdvanceAsync(autoAdvanceDelay);
         }
+
+        if (pauseAudioOnPauseMenu)
+        {
+            if (paused)
+            {
+                sfxAudioSource?.Pause();
+                bgmSourceA?.Pause();
+                bgmSourceB?.Pause();
+            }
+            else
+            {
+                sfxAudioSource?.UnPause();
+                bgmSourceA?.UnPause();
+                bgmSourceB?.UnPause();
+            }
+        }
+    }
+
+    private void OpenBacklogModal()
+    {
+        if (_story == null) return;
+        SetPaused(true, showPauseMenu: false);
+        stageView.ShowBacklogModal(_backlog);
+    }
+
+    private void CloseBacklogModal()
+    {
+        SetPaused(false);
     }
 
     public void SkipCurrentScene()
     {
-        if (_story == null || _isPaused || _areChoicesVisible)
+        if (!enableSkip || _story == null || _isPaused || _areChoicesVisible)
             return;
 
         SetAutoMode(false);
@@ -620,6 +897,7 @@ public class VNStoryController : MonoBehaviour
                 continue;
 
             ExtractSpeakerAndText(trimmedLine, speakerOverride, out string speaker, out string dialogue);
+            RecordBacklogEntry(speaker, dialogue, isChoice: false);
             pendingSpeaker = speaker;
             pendingDialogue = dialogue;
 
@@ -645,7 +923,8 @@ public class VNStoryController : MonoBehaviour
         else
         {
             _areChoicesVisible = false;
-            stageView.PresentLine(string.Empty, "<i>[End of Script]</i>", instant: true);
+            SetAutoMode(false);
+            OnDialogueEnded?.Invoke();
         }
     }
 

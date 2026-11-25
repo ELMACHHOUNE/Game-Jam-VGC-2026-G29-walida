@@ -1,13 +1,26 @@
+.vn-root {
+    -unity-font-definition: url("project://database/Assets/Fonts/Lora-Medium SDF.asset");
+}
+
+#speaker-label,
+.speaker-label,
+.choice-btn,
+.backlog-title,
+.pause-title {
+    -unity-font-definition: url("project://database/Assets/Fonts/Cinzel-Bold SDF.asset");
+}
+
 :root {
-    --color-bg-panel: rgba(14, 17, 24, 0.90);
-    --color-bg-nameplate: rgba(28, 34, 48, 0.98);
-    --color-bg-choice: rgba(20, 24, 34, 0.94);
-    --color-bg-choice-hover: rgba(48, 62, 92, 0.98);
-    --color-border: rgba(255, 255, 255, 0.16);
-    --color-accent: rgb(118, 169, 250);
-    --color-text-primary: rgb(243, 244, 246);
-    --color-text-muted: rgb(156, 163, 175);
-    --color-dim-tint: rgb(135, 135, 145);
+    /* Aged Paper Surfaces (used by choices, backlog drawer, pause & settings modals) */
+    --color-bg-panel: rgba(235, 224, 203, 0.96);       /* #EBE0CB — warm rag paper */
+    --color-bg-choice: rgba(224, 210, 184, 0.92);      /* #E0D2B8 — aged card stock */
+    --color-bg-choice-hover: rgba(212, 193, 160, 0.98);/* #D4C1A0 — pressed parchment */
+    --color-border: rgba(58, 44, 32, 0.28);            /* #3A2C20 — sepia rule line */
+
+    /* Ink Typography */
+    --color-text-primary: rgb(35, 29, 24);             /* #231D18 — carbon / iron-gall black ink */
+    --color-text-muted: rgba(68, 56, 46, 0.75);        /* #44382E — faded sepia ink */
+    --color-accent: rgb(138, 43, 34);                  /* #8A2B22 — vermilion rubrication ink */
 }
 
 .vn-root {
@@ -83,12 +96,11 @@
     max-width: 1480px;
     min-height: 230px;
     padding: 42px 48px 34px 48px;
-    background-color: var(--color-bg-panel);
-    border-color: var(--color-border);
-    border-width: 1px;
-    border-radius: 10px;
-    translate: 0 0;
-    opacity: 1;
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 0;
+    -unity-background-scale-mode: stretch-to-fill;
+    padding: 32px 44px 28px 44px;
 }
 
 .nameplate {
@@ -96,10 +108,11 @@
     top: -22px;
     left: 36px;
     padding: 6px 22px;
-    background-color: var(--color-bg-nameplate);
-    border-color: var(--color-accent);
-    border-width: 1px;
-    border-radius: 6px;
+    background-color: transparent
+    border-width: 0;
+    border-radius: 0;
+    -unity-background-scale-mode: stretch-to-fill;
+    padding: 8px 24px;
 }
 
 .speaker-label {
@@ -110,7 +123,7 @@
 }
 
 .dialogue-label {
-    font-size: 26px;
+    font-size: 32px
     line-height: 38px;
     color: var(--color-text-primary);
     white-space: normal;
@@ -231,6 +244,86 @@
     background-color: rgba(127, 29, 29, 0.55);
 }
 
+/* --- Pause Settings Modal --- */
+.settings-panel {
+    display: none;
+    width: 500px;
+    padding: 36px 36px 26px 36px;
+    align-items: stretch;
+    background-color: var(--color-bg-panel);
+    border-color: var(--color-border);
+    border-width: 1px;
+    border-radius: 12px;
+}
+
+.setting-row {
+    margin-bottom: 18px;
+    flex-direction: column;
+}
+
+.setting-row__header {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.setting-label {
+    font-size: 14px;
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+    color: var(--color-text-primary);
+}
+
+.setting-value {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--color-accent);
+}
+
+.vn-slider {
+    height: 24px;
+    margin: 0;
+}
+
+.vn-slider .unity-base-slider__tracker {
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-width: 0;
+    border-radius: 3px;
+}
+
+.vn-slider .unity-base-slider__dragger {
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    background-color: var(--color-accent);
+    border-width: 0;
+    border-radius: 9px;
+}
+
+.vn-slider .unity-base-slider__dragger:hover {
+    background-color: rgb(165, 200, 255);
+}
+
+.vn-slider .unity-base-slider__dragger-border {
+    display: none;
+}
+
+.settings-actions {
+    margin-top: 10px;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.settings-actions .pause-btn {
+    width: 48%;
+    margin-bottom: 0;
+}
+
+.pause-btn--secondary {
+    color: var(--color-text-muted);
+}
+
 /* --- LAYER 6: Branching Choices --- */
 .choice-overlay {
     display: none;
@@ -284,4 +377,242 @@
     justify-content: center;
     align-items: center;
     background-color: rgba(6, 8, 12, 0.82);
+}
+
+    /* --- Save / Load Slot Modal --- */
+.saveload-panel {
+    display: none;
+    width: 620px;
+    padding: 32px;
+    align-items: stretch;
+    background-color: var(--color-bg-panel);
+    border-color: var(--color-border);
+    border-width: 1px;
+    border-radius: 12px;
+}
+
+.saveload-list {
+    margin-bottom: 18px;
+    flex-direction: column;
+}
+
+.slot-card {
+    margin-bottom: 10px;
+    padding: 14px 18px;
+    align-items: flex-start;
+    background-color: var(--color-bg-choice);
+    border-color: var(--color-border);
+    border-width: 1px;
+    border-radius: 8px;
+    transition-property: background-color, border-color;
+    transition-duration: 0.12s;
+}
+
+.slot-card:hover {
+    background-color: var(--color-bg-choice-hover);
+    border-color: var(--color-accent);
+}
+
+.slot-card--empty,
+.slot-card--empty:hover {
+    opacity: 0.5;
+    border-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(14, 17, 24, 0.55);
+}
+
+.slot-card__header {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.slot-card__title {
+    font-size: 14px;
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+    color: var(--color-accent);
+}
+
+.slot-card__time {
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+.slot-card__preview {
+    font-size: 15px;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 540px;
+}
+
+    /* --- Dialogue Backlog Modal --- */
+/* --- Dialogue Backlog Drawer --- */
+/* --- Dialogue Backlog Drawer --- */
+.backlog-panel {
+    display: none;
+    position: absolute;
+    top: 0;
+    align-self: center;
+    width: 100%;
+    height: 78%;
+    padding: 28px 10% 14px 10%;
+    flex-direction: column;
+    align-items: stretch;
+    background-color: rgb(230, 217, 193);
+    border-bottom-color: rgba(58, 44, 32, 0.42);
+    border-bottom-width: 2px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    translate: 0 -100%;
+}
+
+.backlog-title {
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    font-size: 22px;
+    -unity-font-style: bold;
+    letter-spacing: 3px;
+    color: rgb(28, 23, 19);
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(58, 44, 32, 0.24);
+    -unity-text-align: middle-center;
+}
+
+.backlog-scroll {
+    flex-grow: 1;
+    margin-bottom: 10px;
+}
+
+/* Transparent Scrollbar Track + Rounded Thumb Only */
+.backlog-scroll .unity-scroller--vertical {
+    width: 10px;
+    margin-left: 8px;
+    background-color: transparent;
+    border-width: 0;
+}
+
+.backlog-scroll .unity-scroller--vertical .unity-repeat-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.backlog-scroll .unity-scroller--vertical .unity-slider {
+    margin: 0;
+    min-width: 10px;
+}
+
+.backlog-scroll .unity-scroller--vertical .unity-base-slider__tracker {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.backlog-scroll .unity-scroller--vertical .unity-base-slider__dragger {
+    width: 6px;
+    left: 2px;
+    background-color: rgba(35, 29, 24, 0.35);
+    border-width: 0;
+    border-radius: 3px;
+    transition-property: background-color;
+    transition-duration: 0.12s;
+}
+
+.backlog-scroll .unity-scroller--vertical .unity-base-slider__dragger:hover {
+    background-color: var(--color-accent);
+}
+
+.backlog-scroll .unity-scroller--vertical .unity-base-slider__dragger-border {
+    display: none;
+}
+
+.backlog-scroll .unity-scroller--horizontal {
+    display: none;
+}
+
+/* High-Contrast Backlog Cards */
+.backlog-entry {
+    margin-bottom: 12px;
+    padding: 14px 18px;
+    flex-direction: column;
+    background-color: rgb(246, 240, 228);
+    border-width: 1px;
+    border-color: rgba(58, 44, 32, 0.22);
+    border-left-width: 4px;
+    border-left-color: rgb(62, 48, 36);
+    border-radius: 6px;
+}
+
+.backlog-entry--choice {
+    background-color: rgb(212, 189, 152);        /* #D4BD98 — warm toasted beige */
+    border-color: rgba(120, 78, 36, 0.45);
+    border-left-width: 4px;
+    border-left-color: rgb(126, 82, 38);         /* #7E5226 — saddle brown accent */
+}
+
+.backlog-entry__speaker {
+    margin-bottom: 5px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+    color: rgb(138, 43, 34);
+}
+
+.backlog-entry--choice .backlog-entry__speaker {
+    color: rgb(115, 72, 30);                     /* #73481E — roasted umber header */
+}
+
+.backlog-entry__text {
+    font-size: 17px;
+    white-space: normal;
+    color: rgb(26, 21, 17);
+}
+
+.backlog-entry--choice .backlog-entry__text {
+    -unity-font-style: bold-and-italic;
+    color: rgb(62, 38, 16);                      /* #3E2610 — deep sepia-brown ink */
+}
+
+.backlog-empty {
+    margin-top: 24px;
+    font-size: 15px;
+    color: var(--color-text-muted);
+    -unity-text-align: middle-center;
+}
+
+/* Bottom Close Arrow Button */
+.backlog-close-btn,
+.backlog-close-btn:hover,
+.backlog-close-btn:active,
+.backlog-close-btn:focus {
+    align-self: center;
+    width: 48px;
+    height: 36px;
+    margin: 4px 0 0 0;
+    padding: 0;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    background-image: none;
+    border-width: 0;
+    border-color: transparent;
+    border-radius: 0;
+}
+
+.backlog-close-btn__glyph {
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-position: center center;
+    -unity-background-image-tint-color: var(--color-text-primary);
+    scale: 1 1;
+    transition-property: -unity-background-image-tint-color, scale;
+    transition-duration: 0.14s;
+}
+
+.backlog-close-btn:hover .backlog-close-btn__glyph {
+    -unity-background-image-tint-color: var(--color-accent);
+    scale: 1.12 1.12;
 }

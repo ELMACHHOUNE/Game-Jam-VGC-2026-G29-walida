@@ -1,0 +1,197 @@
+:root {
+    --color-bg-panel: rgba(14, 17, 24, 0.90);
+    --color-bg-btn: rgba(20, 25, 36, 0.88);
+    --color-bg-btn-hover: rgba(38, 48, 68, 0.96);
+    --color-border: rgba(255, 255, 255, 0.16);
+    --color-accent: rgb(118, 169, 250);
+    --color-text-primary: rgb(243, 244, 246);
+    --color-text-muted: rgb(156, 163, 175);
+}
+
+.menu-root {
+    flex-grow: 1;
+    background-color: rgb(0, 0, 0);
+}
+
+.fullscreen-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* --- LAYER 1: Background --- */
+.menu-bg {
+    background-color: rgb(10, 12, 18);
+    background-size: cover;
+    background-position: center center;
+    opacity: 0;
+}
+
+/* --- LAYER 2: Stage, Logo & Buttons --- */
+.menu-stage {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.logo-wrapper {
+    align-self: center;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+}
+
+.logo-image {
+    width: 640px;
+    height: 260px;
+    background-size: contain;
+    background-position: center center;
+}
+
+.button-container {
+    flex-direction: column;
+    align-items: center;
+    width: 320px;
+    opacity: 0;
+}
+
+.menu-btn {
+    width: 100%;
+    margin-bottom: 14px;
+    padding: 15px 24px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-btn);
+    border-color: var(--color-border);
+    border-width: 1px;
+    border-radius: 6px;
+    scale: 1 1;
+    transition-property: background-color, border-color, scale;
+    transition-duration: 0.14s;
+}
+
+.menu-btn:hover {
+    background-color: var(--color-bg-btn-hover);
+    border-color: var(--color-accent);
+    scale: 1.03 1.03;
+}
+
+.menu-btn--exit:hover {
+    border-color: rgb(248, 113, 113);
+    background-color: rgba(127, 29, 29, 0.55);
+}
+
+/* --- LAYER 3: Settings Overlay --- */
+.modal-overlay {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(6, 8, 12, 0.84);
+}
+
+.settings-panel {
+    width: 500px;
+    padding: 36px 36px 26px 36px;
+    align-items: stretch;
+    background-color: var(--color-bg-panel);
+    border-color: var(--color-border);
+    border-width: 1px;
+    border-radius: 12px;
+}
+
+.settings-title {
+    margin-bottom: 24px;
+    font-size: 24px;
+    -unity-font-style: bold;
+    letter-spacing: 3px;
+    color: var(--color-text-primary);
+    -unity-text-align: middle-center;
+}
+
+.setting-row {
+    margin-bottom: 18px;
+    flex-direction: column;
+}
+
+.setting-row__header {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.setting-label {
+    font-size: 14px;
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+    color: var(--color-text-primary);
+}
+
+.setting-value {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--color-accent);
+}
+
+.vn-slider {
+    height: 24px;
+    margin: 0;
+}
+
+.vn-slider .unity-base-slider__tracker {
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-width: 0;
+    border-radius: 3px;
+}
+
+.vn-slider .unity-base-slider__dragger {
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    background-color: var(--color-accent);
+    border-width: 0;
+    border-radius: 9px;
+}
+
+.vn-slider .unity-base-slider__dragger:hover {
+    background-color: rgb(165, 200, 255);
+}
+
+.vn-slider .unity-base-slider__dragger-border {
+    display: none;
+}
+
+.settings-actions {
+    margin-top: 10px;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.settings-actions .menu-btn {
+    width: 48%;
+    margin-bottom: 0;
+}
+
+.menu-btn--secondary {
+    color: var(--color-text-muted);
+}
+/* --- LAYER 4: Boot Splash Curtain --- */
+.splash-overlay {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    background-color: rgb(0, 0, 0);
+    opacity: 1;
+}
+
+.splash-image {
+    width: 68%;
+    height: 55%;
+    background-size: contain;
+    background-position: center center;
+    opacity: 0;
+}

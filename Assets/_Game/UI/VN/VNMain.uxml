@@ -28,6 +28,10 @@
                 <ui:VisualElement name="icon-skip" class="icon-btn__glyph" picking-mode="Ignore" />
             </ui:Button>
 
+            <ui:Button name="btn-backlog" class="icon-btn" tooltip="Dialogue Log">
+                <ui:VisualElement name="icon-backlog" class="icon-btn__glyph" picking-mode="Ignore" />
+            </ui:Button>
+
             <ui:Button name="btn-pause" class="icon-btn" tooltip="Pause">
                 <ui:VisualElement name="icon-pause" class="icon-btn__glyph" picking-mode="Ignore" />
             </ui:Button>
@@ -51,13 +55,69 @@
         </ui:VisualElement>
 
         <!-- LAYER 7: Pause Menu Overlay -->
-        <ui:VisualElement name="layer-modal" class="fullscreen-layer modal-overlay" picking-mode="Position">
+    <ui:VisualElement name="layer-modal" class="fullscreen-layer modal-overlay" picking-mode="Position">
             <ui:VisualElement name="pause-menu" class="pause-panel" picking-mode="Position">
                 <ui:Label text="PAUSED" class="pause-title" picking-mode="Ignore" />
                 <ui:Button name="btn-resume" class="pause-btn" text="RESUME" />
                 <ui:Button name="btn-pause-save" class="pause-btn" text="SAVE" />
                 <ui:Button name="btn-pause-load" class="pause-btn" text="LOAD" />
+                <ui:Button name="btn-pause-settings" class="pause-btn" text="SETTINGS" />
                 <ui:Button name="btn-pause-quit" class="pause-btn pause-btn--danger" text="QUIT TO TITLE" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="saveload-panel" class="saveload-panel" picking-mode="Position">
+                <ui:Label name="saveload-title" text="LOAD GAME" class="pause-title" picking-mode="Ignore" />
+                <ui:VisualElement name="saveload-list" class="saveload-list" picking-mode="Position" />
+                <ui:Button name="btn-saveload-back" class="pause-btn" text="BACK" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="settings-panel" class="settings-panel" picking-mode="Position">
+                <ui:Label text="SETTINGS" class="pause-title" picking-mode="Ignore" />
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="MUSIC (BGM)" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-bgm" text="55%" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-bgm" class="vn-slider" low-value="0" high-value="1" value="0.55" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="SOUND EFFECTS" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-sfx" text="85%" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-sfx" class="vn-slider" low-value="0" high-value="1" value="0.85" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="TEXT BLIPS" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-voice" text="45%" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-voice" class="vn-slider" low-value="0" high-value="1" value="0.45" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="TEXT SPEED" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-speed" text="45 cps" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-speed" class="vn-slider" low-value="15" high-value="120" value="45" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="settings-actions" picking-mode="Position">
+                    <ui:Button name="btn-settings-reset" class="pause-btn pause-btn--secondary" text="DEFAULTS" />
+                    <ui:Button name="btn-close-settings" class="pause-btn" text="BACK" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="backlog-panel" class="backlog-panel" picking-mode="Position">
+                <ui:Label text="HISTORY" class="backlog-title" picking-mode="Ignore" />
+                <ui:ScrollView name="backlog-scroll" class="backlog-scroll" mode="Vertical" picking-mode="Position" />
+                <ui:Button name="btn-backlog-close" class="backlog-close-btn" tooltip="Close Log">
+                    <ui:VisualElement name="icon-backlog-arrow" class="backlog-close-btn__glyph" picking-mode="Ignore" />
+                </ui:Button>
             </ui:VisualElement>
         </ui:VisualElement>
 

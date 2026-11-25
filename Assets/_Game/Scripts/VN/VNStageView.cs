@@ -1,7 +1,6 @@
 using LitMotion;
 using System;
 using System.Collections.Generic;
-using UnityEditor.U2D.Animation;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -28,6 +27,8 @@ public class VNStageView : MonoBehaviour
     [SerializeField] private Sprite autoplayIconSprite;
     [SerializeField] private Sprite skipIconSprite;
     [SerializeField] private Sprite pauseIconSprite;
+    [SerializeField] private Sprite backlogIconSprite;
+    [SerializeField] private Sprite backlogCloseArrowSprite;
 
     [Header("Character Registry")]
     [SerializeField] private List<VNCharacterData> characterDatabase = new();
@@ -38,12 +39,27 @@ public class VNStageView : MonoBehaviour
     [SerializeField] private float charMoveDuration = 0.28f;
     [SerializeField] private float charFadeDuration = 0.22f;
 
+    [Header("Backlog Drawer Layout & Animation")]
+    [SerializeField, Range(20f, 100f)] private float backlogWidthPercent = 100f;
+    [SerializeField, Range(20f, 95f)] private float backlogHeightPercent = 78f;
+    [SerializeField, Min(0.05f)] private float backlogSlideDuration = 0.28f;
+
     [Header("Typewriter Audio")]
     [SerializeField] private AudioSource uiAudioSource;
     [SerializeField] private AudioClip typingClickClip;
     [SerializeField, Range(0f, 1f)] private float typingClickVolume = 0.45f;
     [SerializeField, Min(1)] private int charsPerClick = 2;
     [SerializeField] private Vector2 pitchJitter = new Vector2(0.96f, 1.04f);
+
+    [Header("Mode Defaults")]
+    [SerializeField] private bool hideDialogueOnStart = true;
+
+    [Header("Dialogue & Nameplate Textures")]
+    [SerializeField] private Sprite dialogueBoxSprite;
+    [SerializeField] private Sprite nameplateSprite;
+    [SerializeField] private RectOffset dialogueInnerPadding;
+    [SerializeField] private RectOffset nameplateInnerPadding;
+    public bool IsDialogueVisible => _boundRoot != null && _boundRoot.resolvedStyle.display != DisplayStyle.None;
 
     // Lifecycle & Input Events consumed by VNStoryController
     public event Action OnViewReady;
@@ -57,6 +73,12 @@ public class VNStageView : MonoBehaviour
     public event Action OnSaveClicked;
     public event Action OnLoadClicked;
     public event Action OnQuitClicked;
+    public event Action<bool, string> OnSaveSlotSelected; // (isSaveMode, slotId)
+    public event Action OnSaveLoadBackClicked;
+    public event Action OnLogClicked;
+    public event Action OnBacklogBackClicked;
+
+
 
     public bool IsReady => _boundRoot != null;
     public bool IsTyping => _typewriter != null && _typewriter.IsTyping;
@@ -77,15 +99,26 @@ public class VNStageView : MonoBehaviour
     private VisualElement _choiceOverlay;
     private VisualElement _choiceList;
     private VisualElement _modalOverlay;
+    private VisualElement _pausePanel;
+    private VisualElement _saveLoadPanel;
+    private Label _saveLoadTitle;
+    private VisualElement _saveLoadList;
+    private VisualElement _settingsPanel;
+    private VNSettingsView _settingsView;
+    private VisualElement _backlogPanel;
+    private ScrollView _backlogScroll;
+    private VisualElement _nameplateBox;
 
     private Button _btnAutoplay;
     private VisualElement _autoplayIcon;
     private Button _btnSkip;
     private Button _btnPause;
+    private Button _btnBacklog;
 
     // Runtime State
 
     private int _audibleCharCount;
+    public bool IsBacklogOpen => _isBacklogOpen;
     private AudioClip _fallbackClickClip;
     private AudioClip _activeVoiceClip;
     private float _activeBasePitch = 1f;
@@ -98,12 +131,18 @@ public class VNStageView : MonoBehaviour
     private readonly Dictionary<string, MotionHandle> _charFadeTweens = new();
     private readonly List<string> _entranceOrder = new();
     private readonly List<UnityEngine.Object> _proceduralIcons = new();
+    private readonly Dictionary<string, string> _activeExpressions = new();
+    private string _activeSpeakerId = string.Empty;
 
 
     private MotionHandle _bgTween;
     private MotionHandle _cgTween;
     private MotionHandle _indicatorTween;
     private MotionHandle _autoplaySpinTween;
+    private MotionHandle _backlogSlideTween;
+    private float _currentBacklogYPercent = -100f;
+    private bool _isBacklogOpen;
+    private bool _isBacklogClosing;
     private void Awake()
     {
         foreach (var data in characterDatabase)
@@ -121,6 +160,10 @@ public class VNStageView : MonoBehaviour
             _fallbackClickClip = CreateProceduralClickClip();
     }
 
+    private void OnValidate()
+    {
+        ApplyDialogueTextures();
+    }
     private void OnEnable()
     {
         if (panelRenderer == null)
@@ -128,6 +171,10 @@ public class VNStageView : MonoBehaviour
             Debug.LogError("[VNStageView] PanelRenderer reference is missing.");
             return;
         }
+
+        if (VNSettingsManager.Instance != null)
+            VNSettingsManager.Instance.OnSettingsChanged += ApplyStageSettings;
+        ApplyStageSettings();
 
         panelRenderer.RegisterUIReloadCallback(HandleUIReload);
     }
@@ -145,6 +192,12 @@ public class VNStageView : MonoBehaviour
             _typewriter = null;
         }
 
+        if (VNSettingsManager.Instance != null)
+            VNSettingsManager.Instance.OnSettingsChanged -= ApplyStageSettings;
+
+        _settingsView?.Dispose();
+        _settingsView = null;
+
     }
 
     private void OnDestroy()
@@ -153,6 +206,7 @@ public class VNStageView : MonoBehaviour
         CancelHandle(_cgTween);
         CancelHandle(_indicatorTween);
         CancelHandle(_autoplaySpinTween);
+        CancelHandle(_backlogSlideTween);
 
         foreach (var handle in _charMoveTweens.Values) CancelHandle(handle);
         foreach (var handle in _charFadeTweens.Values) CancelHandle(handle);
@@ -194,6 +248,15 @@ public class VNStageView : MonoBehaviour
         _typewriter.OnCompleted += HandleTypingCompleted;
 
         OnViewReady?.Invoke();
+
+        if (hideDialogueOnStart)
+            SetDialogueVisible(false);
+    }
+
+    public void SetDialogueVisible(bool visible)
+    {
+        if (_boundRoot != null)
+            _boundRoot.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
     private void BindUxmlElements(VisualElement root)
@@ -217,23 +280,79 @@ public class VNStageView : MonoBehaviour
         _btnAutoplay = root.Q<Button>("btn-autoplay");
         _autoplayIcon = root.Q<VisualElement>("icon-autoplay");
         _btnSkip = root.Q<Button>("btn-skip");
+        _btnBacklog = root.Q<Button>("btn-backlog");
         _btnPause = root.Q<Button>("btn-pause");
+        _pausePanel = root.Q<VisualElement>("pause-menu");
+        _saveLoadPanel = root.Q<VisualElement>("saveload-panel");
+        _saveLoadTitle = root.Q<Label>("saveload-title");
+        _saveLoadList = root.Q<VisualElement>("saveload-list");
+
+        _settingsPanel = root.Q<VisualElement>("settings-panel");
+        _backlogPanel = root.Q<VisualElement>("backlog-panel");
+        _backlogScroll = root.Q<ScrollView>("backlog-scroll");
+
+        _settingsView?.Dispose();
+        _settingsView = new VNSettingsView(_settingsPanel, () => ShowPauseMenu(true));
+
+        _btnAutoplay.style.display = DisplayStyle.None;
+        _btnSkip.style.display = DisplayStyle.None;
+
+
+        var btnPauseSettings = root.Q<Button>("btn-pause-settings");
+        if (btnPauseSettings != null)
+        {
+            btnPauseSettings.focusable = false;
+            btnPauseSettings.clicked += ShowSettingsModal;
+        }
+
+        root.Q<Button>("btn-saveload-back").clicked += () => OnSaveLoadBackClicked?.Invoke();
 
         var btnResume = root.Q<Button>("btn-resume");
         var btnSave = root.Q<Button>("btn-pause-save");
         var btnLoad = root.Q<Button>("btn-pause-load");
         var btnQuit = root.Q<Button>("btn-pause-quit");
+        _nameplateBox = root.Q<VisualElement>("nameplate");
+
+        var btnPauseLog = root.Q<Button>("btn-pause-log");
+        if (btnPauseLog != null)
+        {
+            btnPauseLog.focusable = false;
+            btnPauseLog.clicked += () => OnLogClicked?.Invoke();
+        }
+
+        var btnBacklogClose = root.Q<Button>("btn-backlog-close");
+        if (btnBacklogClose != null)
+        {
+            btnBacklogClose.focusable = false;
+            btnBacklogClose.clicked += RequestCloseBacklog;
+        }
+        var backlogArrowIcon = root.Q<VisualElement>("icon-backlog-arrow");
+        if (backlogArrowIcon != null)
+        {
+            backlogArrowIcon.style.backgroundImage = new StyleBackground(
+                backlogCloseArrowSprite != null ? backlogCloseArrowSprite : CreateUpArrowIcon());
+        }
+        _modalOverlay.RegisterCallback<PointerDownEvent>(evt =>
+        {
+            if (evt.button == 0 && evt.target == _modalOverlay && _isBacklogOpen)
+                RequestCloseBacklog();
+        });
+        ApplyBacklogLayout();
 
         // Prevent Space/Enter from re-triggering top icons after clicking them
         _btnAutoplay.focusable = false;
         _btnSkip.focusable = false;
+        _btnBacklog.focusable = false;
         _btnPause.focusable = false;
+
 
         // Assign custom Inspector icons or generate clean procedural icons
         _autoplayIcon.style.backgroundImage = new StyleBackground(
             autoplayIconSprite != null ? autoplayIconSprite : CreateAutoplayIcon());
         root.Q<VisualElement>("icon-skip").style.backgroundImage = new StyleBackground(
             skipIconSprite != null ? skipIconSprite : CreateSkipIcon());
+        root.Q<VisualElement>("icon-backlog").style.backgroundImage = new StyleBackground(
+            backlogIconSprite != null ? backlogIconSprite : CreateBacklogIcon());
         root.Q<VisualElement>("icon-pause").style.backgroundImage = new StyleBackground(
             pauseIconSprite != null ? pauseIconSprite : CreatePauseIcon());
 
@@ -248,12 +367,15 @@ public class VNStageView : MonoBehaviour
 
         _btnAutoplay.clicked += () => OnAutoClicked?.Invoke();
         _btnSkip.clicked += () => OnSkipClicked?.Invoke();
+        _btnBacklog.clicked += () => OnLogClicked?.Invoke();
         _btnPause.clicked += () => OnPauseClicked?.Invoke();
 
         btnResume.clicked += () => OnResumeClicked?.Invoke();
         btnSave.clicked += () => OnSaveClicked?.Invoke();
         btnLoad.clicked += () => OnLoadClicked?.Invoke();
         btnQuit.clicked += () => OnQuitClicked?.Invoke();
+
+        ApplyDialogueTextures();
     }
 
     // =========================================================================
@@ -312,6 +434,63 @@ public class VNStageView : MonoBehaviour
         {
             _typewriter.Play(text, defaultCharsPerSecond);
         }
+    }
+
+    public void ApplyDialogueTextures()
+    {
+        if (_dialogueBox != null)
+        {
+            if (dialogueBoxSprite != null)
+                _dialogueBox.style.backgroundImage = new StyleBackground(dialogueBoxSprite);
+
+            if (dialogueInnerPadding != null &&
+                (dialogueInnerPadding.left > 0 || dialogueInnerPadding.right > 0 ||
+                 dialogueInnerPadding.top > 0 || dialogueInnerPadding.bottom > 0))
+            {
+                _dialogueBox.style.paddingLeft = dialogueInnerPadding.left;
+                _dialogueBox.style.paddingRight = dialogueInnerPadding.right;
+                _dialogueBox.style.paddingTop = dialogueInnerPadding.top;
+                _dialogueBox.style.paddingBottom = dialogueInnerPadding.bottom;
+            }
+        }
+
+        if (_nameplateBox != null)
+        {
+            if (nameplateSprite != null)
+                _nameplateBox.style.backgroundImage = new StyleBackground(nameplateSprite);
+
+            if (nameplateInnerPadding != null &&
+                (nameplateInnerPadding.left > 0 || nameplateInnerPadding.right > 0 ||
+                 nameplateInnerPadding.top > 0 || nameplateInnerPadding.bottom > 0))
+            {
+                _nameplateBox.style.paddingLeft = nameplateInnerPadding.left;
+                _nameplateBox.style.paddingRight = nameplateInnerPadding.right;
+                _nameplateBox.style.paddingTop = nameplateInnerPadding.top;
+                _nameplateBox.style.paddingBottom = nameplateInnerPadding.bottom;
+            }
+        }
+    }
+
+    public void SetTopBarFeatureVisibility(bool showAutoplay, bool showSkip)
+    {
+        if (_btnAutoplay != null)
+            _btnAutoplay.style.display = showAutoplay ? DisplayStyle.Flex : DisplayStyle.None;
+
+        if (_btnSkip != null)
+            _btnSkip.style.display = showSkip ? DisplayStyle.Flex : DisplayStyle.None;
+    }
+
+    private Sprite CreateBacklogIcon()
+    {
+        // Three horizontal lines representing a text history log
+        return BuildIconSprite(64, (x, y) =>
+        {
+            bool inWidth = x >= 16 && x <= 48;
+            bool line1 = y >= 41 && y <= 45;
+            bool line2 = y >= 30 && y <= 34;
+            bool line3 = y >= 19 && y <= 23;
+            return inWidth && (line1 || line2 || line3);
+        });
     }
 
     public void CompleteTyping() => _typewriter?.CompleteImmediately();
@@ -378,8 +557,167 @@ public class VNStageView : MonoBehaviour
 
     public void ShowPauseMenu(bool show)
     {
+        _isBacklogOpen = false;
         if (_modalOverlay != null)
             _modalOverlay.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+
+        if (_pausePanel != null)
+            _pausePanel.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+
+        if (_saveLoadPanel != null)
+            _saveLoadPanel.style.display = DisplayStyle.None;
+
+        if (_settingsPanel != null)
+            _settingsPanel.style.display = DisplayStyle.None;
+
+        if (_backlogPanel != null)
+            _backlogPanel.style.display = DisplayStyle.None;
+    }
+
+    public void ShowSettingsModal()
+    {
+        _isBacklogOpen = false;
+        if (_modalOverlay == null || _settingsPanel == null) return;
+
+        _modalOverlay.style.display = DisplayStyle.Flex;
+        _pausePanel.style.display = DisplayStyle.None;
+        _saveLoadPanel.style.display = DisplayStyle.None;
+
+        _settingsView?.SyncFromManager();
+        _settingsPanel.style.display = DisplayStyle.Flex;
+
+        if (_backlogPanel != null)
+            _backlogPanel.style.display = DisplayStyle.None;
+    }
+
+    private void ApplyStageSettings()
+    {
+        if (VNSettingsManager.Instance == null) return;
+        defaultCharsPerSecond = VNSettingsManager.Instance.TextSpeed;
+        typingClickVolume = VNSettingsManager.Instance.VoiceVolume;
+    }
+
+    public void ShowSaveLoadModal(bool isSaveMode, IReadOnlyList<VNSaveSlotSummary> slots)
+    {
+        _isBacklogOpen = false;
+        if (_modalOverlay == null || _saveLoadPanel == null) return;
+        if (_backlogPanel != null)
+            _backlogPanel.style.display = DisplayStyle.None;
+
+        _modalOverlay.style.display = DisplayStyle.Flex;
+        _pausePanel.style.display = DisplayStyle.None;
+        _saveLoadPanel.style.display = DisplayStyle.Flex;
+        _saveLoadTitle.text = isSaveMode ? "SAVE GAME" : "LOAD GAME";
+
+        _saveLoadList.Clear();
+
+        foreach (VNSaveSlotSummary slot in slots)
+        {
+            string capturedId = slot.SlotId;
+            bool disabledInLoad = !isSaveMode && slot.IsEmpty;
+
+            var card = new Button(() => OnSaveSlotSelected?.Invoke(isSaveMode, capturedId));
+            card.AddToClassList("slot-card");
+            if (disabledInLoad)
+            {
+                card.AddToClassList("slot-card--empty");
+                card.SetEnabled(false);
+                card.pickingMode = PickingMode.Ignore;
+            }
+
+            var header = new VisualElement();
+            header.AddToClassList("slot-card__header");
+            header.pickingMode = PickingMode.Ignore;
+
+            var titleLbl = new Label(slot.Title);
+            titleLbl.AddToClassList("slot-card__title");
+            titleLbl.pickingMode = PickingMode.Ignore;
+
+            var timeLbl = new Label(slot.Timestamp);
+            timeLbl.AddToClassList("slot-card__time");
+            timeLbl.pickingMode = PickingMode.Ignore;
+
+            var previewLbl = new Label(slot.Preview);
+            previewLbl.AddToClassList("slot-card__preview");
+            previewLbl.pickingMode = PickingMode.Ignore;
+
+            header.Add(titleLbl);
+            header.Add(timeLbl);
+            card.Add(header);
+            card.Add(previewLbl);
+
+            _saveLoadList.Add(card);
+        }
+    }
+
+    public List<SavedCharacterState> CaptureCharacterStates()
+    {
+        var result = new List<SavedCharacterState>(_entranceOrder.Count);
+        foreach (string id in _entranceOrder)
+        {
+            result.Add(new SavedCharacterState
+            {
+                characterId = id,
+                expression = _activeExpressions.TryGetValue(id, out string expr) ? expr : "neutral",
+                slot = _assignedSlots.TryGetValue(id, out StageSlot s) ? s : StageSlot.Auto
+            });
+        }
+        return result;
+    }
+
+    public string GetActiveSpeakerId() => _activeSpeakerId;
+
+    public void RestoreCharacterStates(List<SavedCharacterState> states, string activeSpeakerId)
+    {
+        // Immediately remove existing slots without exit fade tweens
+        foreach (var handle in _charMoveTweens.Values) CancelHandle(handle);
+        foreach (var handle in _charFadeTweens.Values) CancelHandle(handle);
+        _charMoveTweens.Clear();
+        _charFadeTweens.Clear();
+
+        foreach (var slot in _activeSlots.Values)
+            slot.RemoveFromHierarchy();
+
+        _activeSlots.Clear();
+        _assignedSlots.Clear();
+        _activeExpressions.Clear();
+        _entranceOrder.Clear();
+
+        if (states != null)
+        {
+            foreach (SavedCharacterState state in states)
+            {
+                string id = state.characterId.ToLowerInvariant();
+                if (!_charDb.TryGetValue(id, out var data)) continue;
+
+                var slot = new VisualElement();
+                slot.AddToClassList("character-slot");
+                slot.pickingMode = PickingMode.Ignore;
+                slot.style.opacity = 1f;
+
+                Sprite sprite = data.GetExpression(state.expression);
+                if (sprite != null)
+                    slot.style.backgroundImage = new StyleBackground(sprite);
+
+                _stageLayer.Add(slot);
+                _activeSlots[id] = slot;
+                _assignedSlots[id] = state.slot;
+                _activeExpressions[id] = state.expression;
+                _entranceOrder.Add(id);
+            }
+
+            // Snap positions instantly without sliding animations
+            int count = _entranceOrder.Count;
+            for (int i = 0; i < count; i++)
+            {
+                string id = _entranceOrder[i];
+                StageSlot explicitSlot = _assignedSlots[id];
+                float targetX = explicitSlot != StageSlot.Auto ? SlotToX(explicitSlot) : ResolveAutoX(i, count);
+                _activeSlots[id].style.translate = new Translate(targetX, 0f);
+            }
+        }
+
+        SetActiveSpeaker(activeSpeakerId);
     }
 
     public void SetSkipState(bool active)
@@ -520,8 +858,10 @@ public class VNStageView : MonoBehaviour
         }
 
         Sprite sprite = data.GetExpression(expression);
-        if (sprite != null)
+        if (sprite != null) {
             slot.style.backgroundImage = new StyleBackground(sprite);
+            _activeExpressions[id] = expression;
+        }
 
         _assignedSlots[id] = requestedSlot;
         RecalculateStageLayout(isNewEntrance ? id : null);
@@ -539,6 +879,7 @@ public class VNStageView : MonoBehaviour
         _activeSlots.Remove(id);
         _assignedSlots.Remove(id);
         _entranceOrder.Remove(id);
+        _activeExpressions.Remove(id);
 
         RecalculateStageLayout(newlyEnteredId: null);
         FadeCharacter(id, slot, slot.resolvedStyle.opacity, 0f, destroyOnComplete: true);
@@ -560,6 +901,7 @@ public class VNStageView : MonoBehaviour
             {
                 slot.RemoveFromClassList("character-slot--dimmed");
                 slot.BringToFront();
+                _activeSpeakerId = speakerId;
             }
             else
             {
@@ -741,6 +1083,133 @@ public class VNStageView : MonoBehaviour
         var clip = AudioClip.Create("ProceduralTypeClick", sampleCount, 1, sampleRate, stream: false);
         clip.SetData(samples, 0);
         return clip;
+    }
+
+    public void ApplyBacklogLayout()
+    {
+        if (_backlogPanel == null) return;
+        _backlogPanel.style.width = new Length(Mathf.Clamp(backlogWidthPercent, 20f, 100f), LengthUnit.Percent);
+        _backlogPanel.style.height = new Length(Mathf.Clamp(backlogHeightPercent, 20f, 95f), LengthUnit.Percent);
+    }
+
+    public void ShowBacklogModal(IReadOnlyList<VNBacklogEntry> entries)
+    {
+        if (_modalOverlay == null || _backlogPanel == null || _backlogScroll == null)
+            return;
+
+        CancelHandle(_backlogSlideTween);
+        _isBacklogOpen = true;
+        _isBacklogClosing = false;
+
+        ApplyBacklogLayout();
+
+        _modalOverlay.style.display = DisplayStyle.Flex;
+        _pausePanel.style.display = DisplayStyle.None;
+        _saveLoadPanel.style.display = DisplayStyle.None;
+        _settingsPanel.style.display = DisplayStyle.None;
+        _backlogPanel.style.display = DisplayStyle.Flex;
+
+        _backlogScroll.Clear();
+
+        if (entries == null || entries.Count == 0)
+        {
+            var emptyLbl = new Label("No dialogue recorded yet.");
+            emptyLbl.AddToClassList("backlog-empty");
+            emptyLbl.pickingMode = PickingMode.Ignore;
+            _backlogScroll.Add(emptyLbl);
+        }
+        else
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                VNBacklogEntry entry = entries[i];
+
+                var row = new VisualElement();
+                row.AddToClassList("backlog-entry");
+                row.pickingMode = PickingMode.Ignore;
+
+                if (entry.isChoice)
+                    row.AddToClassList("backlog-entry--choice");
+
+                string headerText = entry.isChoice ? "CHOICE" : entry.speaker;
+                if (!string.IsNullOrWhiteSpace(headerText))
+                {
+                    var speakerLbl = new Label(headerText);
+                    speakerLbl.AddToClassList("backlog-entry__speaker");
+                    speakerLbl.pickingMode = PickingMode.Ignore;
+                    row.Add(speakerLbl);
+                }
+
+                string bodyText = entry.isChoice ? $"> {entry.text}" : entry.text;
+                var bodyLbl = new Label(bodyText) { enableRichText = true };
+                bodyLbl.AddToClassList("backlog-entry__text");
+                bodyLbl.pickingMode = PickingMode.Ignore;
+                row.Add(bodyLbl);
+
+                _backlogScroll.Add(row);
+            }
+
+            _backlogScroll.schedule.Execute(() =>
+                _backlogScroll.scrollOffset = new Vector2(0f, float.MaxValue));
+        }
+
+        // Slide smoothly down from top edge (using unscaled time since game is paused)
+        _currentBacklogYPercent = -100f;
+        _backlogPanel.style.translate = new Translate(0f, new Length(_currentBacklogYPercent, LengthUnit.Percent));
+
+        _backlogSlideTween = LMotion.Create(_currentBacklogYPercent, 0f, backlogSlideDuration)
+            .WithEase(Ease.OutCubic)
+            .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+            .WithOnComplete(() =>
+            {
+                _currentBacklogYPercent = 0f;
+                _backlogPanel.style.translate = new Translate(0f, new Length(0f, LengthUnit.Percent));
+            })
+            .Bind(pct =>
+            {
+                _currentBacklogYPercent = pct;
+                _backlogPanel.style.translate = new Translate(0f, new Length(pct, LengthUnit.Percent));
+            });
+    }
+
+    public void RequestCloseBacklog()
+    {
+        if (!_isBacklogOpen || _isBacklogClosing || _backlogPanel == null)
+            return;
+
+        _isBacklogClosing = true;
+        CancelHandle(_backlogSlideTween);
+
+        float startPct = _currentBacklogYPercent;
+        _backlogSlideTween = LMotion.Create(startPct, -100f, backlogSlideDuration)
+            .WithEase(Ease.InCubic)
+            .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+            .WithOnComplete(() =>
+            {
+                _currentBacklogYPercent = -100f;
+                _backlogPanel.style.translate = new Translate(0f, new Length(-100f, LengthUnit.Percent));
+                _backlogPanel.style.display = DisplayStyle.None;
+                _modalOverlay.style.display = DisplayStyle.None;
+                _isBacklogOpen = false;
+                _isBacklogClosing = false;
+                OnBacklogBackClicked?.Invoke();
+            })
+            .Bind(pct =>
+            {
+                _currentBacklogYPercent = pct;
+                _backlogPanel.style.translate = new Translate(0f, new Length(pct, LengthUnit.Percent));
+            });
+    }
+
+    private Sprite CreateUpArrowIcon()
+    {
+        // Upward-pointing chevron (^) for retracting the top backlog drawer
+        return BuildIconSprite(64, (x, y) =>
+        {
+            float dx = Mathf.Abs(x - 32f);
+            float centerY = 39f - dx * 0.75f;
+            return dx <= 18f && Mathf.Abs(y - centerY) <= 2.6f;
+        });
     }
 }
 

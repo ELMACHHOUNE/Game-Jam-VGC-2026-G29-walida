@@ -13,8 +13,11 @@ MonoBehaviour:
   m_Name: Arthur
   m_EditorClassIdentifier: Assembly-CSharp::VNCharacterData
   characterId: Arthur
-  displayName: Arthur Morgan
-  nameColor: {r: 0.93207544, g: 0.05451757, b: 0.19053829, a: 1}
+  displayName: Khadija
+  nameColor: {r: 0.13725491, g: 0.11372549, b: 0.09411765, a: 1}
+  voiceBlip: {fileID: 0}
+  basePitch: 1
+  pitchVariance: 0.04
   expressions:
   - key: neutral
     sprite: {fileID: 7353740402459472725, guid: b164cc75284f06b4c99d194655547d57, type: 3}

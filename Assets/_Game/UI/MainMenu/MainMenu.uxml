@@ -1,0 +1,74 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="MainMenu.uss" />
+
+    <ui:VisualElement name="menu-root" class="menu-root" picking-mode="Ignore">
+
+        <!-- LAYER 1: Full-Screen Menu Background -->
+        <ui:VisualElement name="menu-bg" class="fullscreen-layer menu-bg" picking-mode="Ignore" />
+
+        <!-- LAYER 2: Centered Logo & Vertical Button Stack -->
+        <ui:VisualElement name="menu-stage" class="fullscreen-layer menu-stage" picking-mode="Ignore">
+            <ui:VisualElement name="logo-wrapper" class="logo-wrapper" picking-mode="Ignore">
+                <ui:VisualElement name="logo-image" class="logo-image" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="button-container" class="button-container" picking-mode="Position">
+                <ui:Button name="btn-continue" class="menu-btn" text="CONTINUE" />
+                <ui:Button name="btn-new-game" class="menu-btn" text="NEW GAME" />
+                <ui:Button name="btn-settings" class="menu-btn" text="SETTINGS" />
+                <ui:Button name="btn-exit" class="menu-btn menu-btn--exit" text="EXIT" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- LAYER 3: Settings Modal Overlay -->
+<!-- LAYER 3: Settings Modal Overlay -->
+        <ui:VisualElement name="settings-overlay" class="fullscreen-layer modal-overlay" picking-mode="Position">
+            <ui:VisualElement name="settings-panel" class="settings-panel" picking-mode="Position">
+                <ui:Label text="SETTINGS" class="settings-title" picking-mode="Ignore" />
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="MUSIC (BGM)" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-bgm" text="55%" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-bgm" class="vn-slider" low-value="0" high-value="1" value="0.55" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="SOUND EFFECTS" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-sfx" text="85%" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-sfx" class="vn-slider" low-value="0" high-value="1" value="0.85" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="TEXT BLIPS" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-voice" text="45%" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-voice" class="vn-slider" low-value="0" high-value="1" value="0.45" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="setting-row" picking-mode="Position">
+                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
+                        <ui:Label text="TEXT SPEED" class="setting-label" picking-mode="Ignore" />
+                        <ui:Label name="val-speed" text="45 cps" class="setting-value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Slider name="slider-speed" class="vn-slider" low-value="15" high-value="120" value="45" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="settings-actions" picking-mode="Position">
+                    <ui:Button name="btn-settings-reset" class="menu-btn menu-btn--secondary" text="DEFAULTS" />
+                    <ui:Button name="btn-close-settings" class="menu-btn" text="BACK" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- LAYER 4: Boot Splash Screen Curtain -->
+        <ui:VisualElement name="splash-overlay" class="fullscreen-layer splash-overlay" picking-mode="Position">
+            <ui:VisualElement name="splash-image" class="splash-image" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
