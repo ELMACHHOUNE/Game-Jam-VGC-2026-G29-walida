@@ -1,85 +1,76 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using LitMotion;
+using FMOD.Studio;
+using FMODUnity;
 
 public class MainMenuController : MonoBehaviour
 {
-    [Serializable]
-    public class SplashScreenEntry
-    {
-        public Sprite sprite;
-        [Min(0.05f)] public float fadeInDuration = 0.6f;
-        [Min(0f)] public float holdDuration = 1.2f;
-        [Min(0.05f)] public float fadeOutDuration = 0.6f;
-    }
-
-    [Header("UI Panel & Scene Target")]
+    [Header("UI Panel")]
     [SerializeField] private PanelRenderer panelRenderer;
-    [SerializeField] private string gameplaySceneName = "VNScene";
 
-    [Header("Boot Splash Sequence")]
-    [SerializeField] private List<SplashScreenEntry> splashScreens = new();
-    [SerializeField] private bool allowSplashSkip = true;
-    [SerializeField] private bool playSplashOnlyOnColdBoot = true;
-    [SerializeField] private float splashCurtainFadeOut = 0.55f;
+    [Header("Scene Flow")]
+    [SerializeField] private string gameplaySceneName = "MedinaScene";
+    [SerializeField, Min(0.1f)] private float sceneTransitionDuration = 0.55f;
 
-    [Header("Main Menu Reveal Timings")]
-    [SerializeField] private float backgroundFadeDuration = 0.7f;
-    [SerializeField] private float logoFadeDelay = 0.15f;
-    [SerializeField] private float logoFadeDuration = 0.65f;
-    [SerializeField] private float buttonsFadeDelay = 0.2f;
-    [SerializeField] private float buttonsFadeDuration = 0.5f;
-
-    [Header("Main Menu Visuals")]
+    [Header("Optional Artwork (Leave None If Already Rendered by Scene Camera)")]
     [SerializeField] private Sprite backgroundSprite;
     [SerializeField] private Sprite logoSprite;
-    [SerializeField] private Vector2 logoSize = new(640f, 260f);
 
-    [Header("Logo Margin (Outer Spacing)")]
-    [SerializeField] private float logoMarginTop = 95f;
-    [SerializeField] private float logoMarginBottom = 48f;
-    [SerializeField] private float logoMarginLeft = 0f;
-    [SerializeField] private float logoMarginRight = 0f;
+    [Header("Live Layout & Sizing (Inspector Preview)")]
+    [SerializeField, Range(5f, 65f)] private float stackTopOffsetPercent = 37f;
+    [SerializeField, Range(0.6f, 2.2f)] private float menuScale = 1.15f;
+    [SerializeField, Min(180f)] private float buttonWidth = 310f;
+    [SerializeField, Min(34f)] private float buttonHeight = 48f;
+    [SerializeField, Min(4f)] private float buttonSpacing = 11f;
+    [SerializeField, Min(11f)] private float buttonFontSize = 16f;
+    [SerializeField] private Vector2 logoSize = new Vector2(440f, 220f);
 
-    [Header("Logo Padding (Inner Spacing)")]
-    [SerializeField] private float logoPaddingTop = 0f;
-    [SerializeField] private float logoPaddingBottom = 0f;
-    [SerializeField] private float logoPaddingLeft = 0f;
-    [SerializeField] private float logoPaddingRight = 0f;
+    [Header("FMOD Audio (Optional)")]
+    [SerializeField] private string menuBgmEventPath = "event:/BGM/MainMenu";
+    [SerializeField] private string hoverSfxEventPath = "event:/UI/Hover";
+    [SerializeField] private string clickSfxEventPath = "event:/UI/Click";
 
-    [Header("Logo Offset (Pixel Nudge From Center)")]
-    [SerializeField] private Vector2 logoOffset = Vector2.zero;
+    private VisualElement _boundRoot;
+    private int _lastBoundVersion = -1;
 
-    [Header("Scene Transition Timings")]
-    [SerializeField, Min(0f)] private float menuFadeOutDuration = 0.5f;
-    [SerializeField, Min(0f)] private float preGameStartDelay = 1.0f;
+    private VisualElement _bgElement;
+    private VisualElement _centerColumn;
+    private VisualElement _logoElement;
 
-    // UXML Elements
-    private VisualElement _menuBg;
-    private VisualElement _logoWrapper;
-    private VisualElement _logoImage;
-    private VisualElement _buttonContainer;
+    private readonly List<VisualElement> _buttonRims = new();
+    private readonly List<Button> _buttons = new();
+    private readonly List<Label> _buttonLabels = new();
+
+    private VisualElement _continueRim;
     private Button _btnContinue;
-    private VisualElement _settingsOverlay;
-    private VisualElement _splashOverlay;
-    private VisualElement _splashImage;
+    private Button _btnNewGame;
+    private Button _btnLoad;
+    private Button _btnSettings;
+    private Button _btnExit;
+
+    private VisualElement _modalOverlay;
+    private VisualElement _loadPanel;
+    private ScrollView _loadList;
+    private VisualElement _settingsPanel;
+    private VisualElement _settingsContent;
     private VNSettingsView _settingsView;
 
-    // Runtime State
-    private CancellationTokenSource _sequenceCts;
-    private CancellationTokenSource _splashStepCts;
-    private MotionHandle _activeTween;
-    private bool _isTransitioningScene;
+    private VisualElement _fadeCurtain;
+    private EventInstance _bgmInstance;
+    private bool _isTransitioning;
+
+    private void OnValidate()
+    {
+        ApplyMenuSizing();
+    }
 
     private void OnEnable()
     {
-        Time.timeScale = 1f;
-
         if (panelRenderer == null)
         {
             Debug.LogError("[MainMenuController] PanelRenderer reference is missing.");
@@ -89,334 +80,298 @@ public class MainMenuController : MonoBehaviour
         panelRenderer.RegisterUIReloadCallback(HandleUIReload);
     }
 
+    private void Start()
+    {
+        if (VNSettingsManager.Instance != null)
+            VNSettingsManager.Instance.ApplyAllFmodBuses();
+
+        StartMenuBgm();
+    }
+
     private void OnDisable()
     {
         if (panelRenderer != null)
             panelRenderer.UnregisterUIReloadCallback(HandleUIReload);
 
-        CancelAllSequenceWork();
         _settingsView?.Dispose();
         _settingsView = null;
-    }
-
-    private void OnValidate()
-    {
-        ApplyLogoLayout();
+        StopMenuBgm(immediate: true);
     }
 
     private void Update()
     {
-        if (!allowSplashSkip || _splashStepCts == null)
+        if (_boundRoot == null || _isTransitioning || Keyboard.current == null)
             return;
 
-        bool clicked = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
-        bool pressedAnyKey = Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame;
-
-        if (clicked || pressedAnyKey)
-            SkipCurrentSplashStep();
+        if (Keyboard.current.escapeKey.wasPressedThisFrame &&
+            _modalOverlay != null &&
+            _modalOverlay.resolvedStyle.display == DisplayStyle.Flex)
+        {
+            CloseModals();
+        }
     }
 
     private void HandleUIReload(PanelRenderer pr, VisualElement root, int version)
     {
         if (root == null) return;
 
-        BindElements(root);
-        ApplyVisualAssets();
-        ApplyLogoLayout();
-        RefreshContinueButtonVisibility();
-
-        StartBootAndRevealSequence();
+        if (_boundRoot != root || _lastBoundVersion != version)
+        {
+            BindElements(root);
+            _boundRoot = root;
+            _lastBoundVersion = version;
+        }
     }
 
     private void BindElements(VisualElement root)
     {
-        _menuBg = root.Q<VisualElement>("menu-bg");
-        _logoWrapper = root.Q<VisualElement>("logo-wrapper");
-        _logoImage = root.Q<VisualElement>("logo-image");
-        _buttonContainer = root.Q<VisualElement>("button-container");
-        _btnContinue = root.Q<Button>("btn-continue");
-        _settingsOverlay = root.Q<VisualElement>("settings-overlay");
-        _splashOverlay = root.Q<VisualElement>("splash-overlay");
-        _splashImage = root.Q<VisualElement>("splash-image");
+        _bgElement = root.Q<VisualElement>("menu-bg");
+        _centerColumn = root.Q<VisualElement>("menu-center-column");
+        _logoElement = root.Q<VisualElement>("menu-logo");
 
-        var btnNewGame = root.Q<Button>("btn-new-game");
-        var btnSettings = root.Q<Button>("btn-settings");
-        var btnExit = root.Q<Button>("btn-exit");
-        var btnCloseSettings = root.Q<Button>("btn-close-settings");
+        _buttonRims.Clear();
+        _buttons.Clear();
+        _buttonLabels.Clear();
 
-        _btnContinue.focusable = false;
-        btnNewGame.focusable = false;
-        btnSettings.focusable = false;
-        btnExit.focusable = false;
+        _continueRim = root.Q<VisualElement>("rim-continue");
+        _btnContinue = root.Q<Button>("btn-menu-continue");
+        _btnNewGame = root.Q<Button>("btn-menu-newgame");
+        _btnLoad = root.Q<Button>("btn-menu-load");
+        _btnSettings = root.Q<Button>("btn-menu-settings");
+        _btnExit = root.Q<Button>("btn-menu-exit");
 
-        _btnContinue.clicked += HandleContinueClicked;
-        btnNewGame.clicked += HandleNewGameClicked;
-        btnSettings.clicked += () => _settingsOverlay.style.display = DisplayStyle.Flex;
-        btnCloseSettings.clicked += () => _settingsOverlay.style.display = DisplayStyle.None;
-        btnExit.clicked += HandleExitClicked;
+        _buttonRims.AddRange(root.Query<VisualElement>(className: "menu-cutout-rim").ToList());
+        _buttons.AddRange(root.Query<Button>(className: "menu-btn").ToList());
+        _buttonLabels.AddRange(root.Query<Label>(className: "menu-btn__label").ToList());
 
-        _splashOverlay.RegisterCallback<PointerDownEvent>(evt =>
-        {
-            if (allowSplashSkip && evt.button == 0)
-                SkipCurrentSplashStep();
-        });
+        _modalOverlay = root.Q<VisualElement>("menu-modal-overlay");
+        _loadPanel = root.Q<VisualElement>("menu-load-panel");
+        _loadList = root.Q<ScrollView>("menu-load-list");
+        _settingsPanel = root.Q<VisualElement>("menu-settings-panel");
+        _settingsContent = root.Q<VisualElement>("menu-settings-content");
+        _fadeCurtain = root.Q<VisualElement>("menu-fade-curtain");
 
         _settingsView?.Dispose();
-        _settingsView = new VNSettingsView(
-            root.Q<VisualElement>("settings-panel"),
-            () => _settingsOverlay.style.display = DisplayStyle.None
-        );
+        _settingsView = new VNSettingsView(_settingsContent ?? _settingsPanel, CloseModals);
 
-        btnSettings.clicked += () =>
+        foreach (Button btn in _buttons)
         {
-            _settingsView.SyncFromManager();
-            _settingsOverlay.style.display = DisplayStyle.Flex;
-        };
-    }
-
-    private void ApplyVisualAssets()
-    {
-        if (_menuBg != null)
-            _menuBg.style.backgroundImage = backgroundSprite != null
-                ? new StyleBackground(backgroundSprite)
-                : StyleKeyword.None;
-
-        if (_logoImage != null)
-            _logoImage.style.backgroundImage = logoSprite != null
-                ? new StyleBackground(logoSprite)
-                : StyleKeyword.None;
-    }
-
-    public void ApplyLogoLayout()
-    {
-        if (_logoWrapper == null || _logoImage == null)
-            return;
-
-        _logoImage.style.width = Mathf.Max(16f, logoSize.x);
-        _logoImage.style.height = Mathf.Max(16f, logoSize.y);
-
-        _logoWrapper.style.marginTop = logoMarginTop;
-        _logoWrapper.style.marginBottom = logoMarginBottom;
-        _logoWrapper.style.marginLeft = logoMarginLeft;
-        _logoWrapper.style.marginRight = logoMarginRight;
-
-        _logoWrapper.style.paddingTop = Mathf.Max(0f, logoPaddingTop);
-        _logoWrapper.style.paddingBottom = Mathf.Max(0f, logoPaddingBottom);
-        _logoWrapper.style.paddingLeft = Mathf.Max(0f, logoPaddingLeft);
-        _logoWrapper.style.paddingRight = Mathf.Max(0f, logoPaddingRight);
-
-        _logoWrapper.style.translate = new Translate(logoOffset.x, logoOffset.y);
-    }
-
-    public void RefreshContinueButtonVisibility()
-    {
-        if (_btnContinue == null) return;
-        bool hasSave = VNSessionBridge.HasAnySaveData();
-        _btnContinue.style.display = hasSave ? DisplayStyle.Flex : DisplayStyle.None;
-    }
-
-    // =========================================================================
-    // BOOT SPLASH -> BACKGROUND -> LOGO -> BUTTONS CHOREOGRAPHY
-    // =========================================================================
-
-    private async void StartBootAndRevealSequence()
-    {
-        CancelAllSequenceWork();
-        _sequenceCts = new CancellationTokenSource();
-        CancellationToken token = _sequenceCts.Token;
-
-        // Reset all menu elements to invisible before starting
-        _menuBg.style.opacity = 0f;
-        _logoWrapper.style.opacity = 0f;
-        _buttonContainer.style.opacity = 0f;
-        _buttonContainer.SetEnabled(false);
-
-        bool shouldPlaySplashes = splashScreens != null &&
-                                  splashScreens.Count > 0 &&
-                                  (!playSplashOnlyOnColdBoot || !VNSessionBridge.HasPlayedBootSplash);
-
-        try
-        {
-            // 1. Sequential Boot Splash Pictures
-            if (shouldPlaySplashes)
-            {
-                VNSessionBridge.HasPlayedBootSplash = true;
-                _splashOverlay.style.display = DisplayStyle.Flex;
-                _splashOverlay.style.opacity = 1f;
-                _splashImage.style.opacity = 0f;
-
-                foreach (SplashScreenEntry entry in splashScreens)
-                {
-                    if (entry == null || entry.sprite == null)
-                        continue;
-
-                    await PlaySingleSplashAsync(entry, token);
-                }
-
-                // Fade black splash curtain out
-                await FadeElementAsync(_splashOverlay, 1f, 0f, splashCurtainFadeOut, Ease.OutQuad, token);
-                _splashOverlay.style.display = DisplayStyle.None;
-            }
-            else
-            {
-                _splashOverlay.style.display = DisplayStyle.None;
-            }
-
-            // 2. Fade in Main Menu Background
-            await FadeElementAsync(_menuBg, 0f, 1f, backgroundFadeDuration, Ease.OutQuad, token);
-
-            // 3. Fade in Logo separately
-            if (logoFadeDelay > 0f)
-                await Awaitable.WaitForSecondsAsync(logoFadeDelay, token);
-
-            await FadeElementAsync(_logoWrapper, 0f, 1f, logoFadeDuration, Ease.OutCubic, token);
-
-            // 4. Fade in Buttons
-            if (buttonsFadeDelay > 0f)
-                await Awaitable.WaitForSecondsAsync(buttonsFadeDelay, token);
-
-            _buttonContainer.SetEnabled(true);
-            await FadeElementAsync(_buttonContainer, 0f, 1f, buttonsFadeDuration, Ease.OutQuad, token);
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected on scene unload or disable
-        }
-    }
-
-    private async Awaitable PlaySingleSplashAsync(SplashScreenEntry entry, CancellationToken outerToken)
-    {
-        _splashStepCts?.Cancel();
-        _splashStepCts?.Dispose();
-        _splashStepCts = CancellationTokenSource.CreateLinkedTokenSource(outerToken);
-        CancellationToken stepToken = _splashStepCts.Token;
-
-        _splashImage.style.backgroundImage = new StyleBackground(entry.sprite);
-        _splashImage.style.opacity = 0f;
-
-        try
-        {
-            await FadeElementAsync(_splashImage, 0f, 1f, entry.fadeInDuration, Ease.OutQuad, stepToken);
-
-            if (entry.holdDuration > 0f)
-                await Awaitable.WaitForSecondsAsync(entry.holdDuration, stepToken);
-
-            await FadeElementAsync(_splashImage, 1f, 0f, entry.fadeOutDuration, Ease.InQuad, stepToken);
-        }
-        catch (OperationCanceledException) when (!outerToken.IsCancellationRequested)
-        {
-            // Player skipped this individual splash slide; reset image opacity and continue to next slide
-            if (_activeTween.IsActive())
-                _activeTween.Cancel();
-
-            _splashImage.style.opacity = 0f;
-        }
-        finally
-        {
-            _splashStepCts?.Dispose();
-            _splashStepCts = null;
-        }
-    }
-
-    private void SkipCurrentSplashStep()
-    {
-        if (_splashStepCts != null && !_splashStepCts.IsCancellationRequested)
-            _splashStepCts.Cancel();
-    }
-
-    private async Awaitable FadeElementAsync(VisualElement target, float from, float to, float duration, Ease ease, CancellationToken token)
-    {
-        if (target == null) return;
-
-        if (_activeTween.IsActive())
-            _activeTween.Cancel();
-
-        if (duration <= 0f)
-        {
-            target.style.opacity = to;
-            return;
+            btn.focusable = false;
+            btn.RegisterCallback<PointerEnterEvent>(_ => PlayOneShotSafe(hoverSfxEventPath));
         }
 
-        target.style.opacity = from;
-        var completion = new AwaitableCompletionSource();
+        _btnContinue.clicked += OnContinueClicked;
+        _btnNewGame.clicked += OnNewGameClicked;
+        _btnLoad.clicked += OnLoadClicked;
+        _btnSettings.clicked += OnSettingsClicked;
+        _btnExit.clicked += OnExitClicked;
 
-        using var reg = token.Register(() =>
+        root.Q<Button>("btn-menu-load-back").clicked += CloseModals;
+
+        _modalOverlay.RegisterCallback<PointerDownEvent>(evt =>
         {
-            if (_activeTween.IsActive())
-                _activeTween.Cancel();
-            completion.TrySetCanceled();
+            if (evt.button == 0 && evt.target == _modalOverlay)
+                CloseModals();
         });
 
-        _activeTween = LMotion.Create(from, to, duration)
-            .WithEase(ease)
-            .WithOnComplete(() =>
+        RefreshContinueAvailability();
+        ApplyMenuSizing();
+        AnimateButtonEntrance();
+    }
+
+    public void ApplyMenuSizing()
+    {
+        float s = Mathf.Max(0.1f, menuScale);
+
+        if (_bgElement != null)
+        {
+            bool hasBg = backgroundSprite != null;
+            _bgElement.style.display = hasBg ? DisplayStyle.Flex : DisplayStyle.None;
+            if (hasBg)
+                _bgElement.style.backgroundImage = new StyleBackground(backgroundSprite);
+        }
+
+        if (_logoElement != null)
+        {
+            bool hasLogo = logoSprite != null;
+            _logoElement.style.display = hasLogo ? DisplayStyle.Flex : DisplayStyle.None;
+            if (hasLogo)
             {
-                target.style.opacity = to;
-                completion.TrySetResult();
-            })
-            .Bind(a => target.style.opacity = a);
+                _logoElement.style.backgroundImage = new StyleBackground(logoSprite);
+                _logoElement.style.width = logoSize.x * s;
+                _logoElement.style.height = logoSize.y * s;
+            }
+        }
 
-        await completion.Awaitable;
+        if (_centerColumn != null)
+            _centerColumn.style.top = Length.Percent(stackTopOffsetPercent);
+
+        foreach (VisualElement rim in _buttonRims)
+        {
+            if (rim != null)
+                rim.style.marginBottom = buttonSpacing * s;
+        }
+
+        foreach (Button btn in _buttons)
+        {
+            if (btn == null) continue;
+            btn.style.width = buttonWidth * s;
+            btn.style.height = buttonHeight * s;
+        }
+
+        foreach (Label lbl in _buttonLabels)
+        {
+            if (lbl != null)
+                lbl.style.fontSize = buttonFontSize * s;
+        }
+    }
+
+    private void RefreshContinueAvailability()
+    {
+        bool hasSave = VNSaveManager.Instance != null && VNSaveManager.Instance.GetLatestSave() != null;
+
+        if (_btnContinue != null)
+        {
+            _btnContinue.SetEnabled(hasSave);
+            _btnContinue.EnableInClassList("menu-btn--primary", hasSave);
+        }
+
+        if (_continueRim != null)
+            _continueRim.EnableInClassList("menu-cutout-rim--disabled", !hasSave);
+    }
+
+    private void AnimateButtonEntrance()
+    {
+        for (int i = 0; i < _buttonRims.Count; i++)
+        {
+            VisualElement rim = _buttonRims[i];
+            if (rim == null) continue;
+
+            float targetAlpha = (rim == _continueRim && rim.ClassListContains("menu-cutout-rim--disabled")) ? 0.52f : 1f;
+            float delay = i * 0.055f;
+
+            rim.style.opacity = 0f;
+            rim.style.translate = new Translate(0f, 16f);
+
+            LMotion.Create(0f, 1f, 0.32f)
+                .WithDelay(delay)
+                .WithEase(Ease.OutCubic)
+                .Bind(t =>
+                {
+                    rim.style.opacity = Mathf.Lerp(0f, targetAlpha, t);
+                    rim.style.translate = new Translate(0f, Mathf.Lerp(16f, 0f, t));
+                });
+        }
     }
 
     // =========================================================================
-    // MENU BUTTON ACTIONS
+    // BUTTON ACTIONS
     // =========================================================================
 
-    private void HandleContinueClicked()
+    private void OnContinueClicked()
     {
-        if (_isTransitioningScene) return;
+        if (_isTransitioning) return;
+        PlayOneShotSafe(clickSfxEventPath);
+
+        VNSessionBridge.CachedInkStateJson = string.Empty;
         VNSessionBridge.LaunchMode = VNLaunchMode.ContinueLatest;
-        LoadGameplaySceneAsync();
+        TransitionToGameScene();
     }
 
-    private void HandleNewGameClicked()
+    private void OnNewGameClicked()
     {
-        if (_isTransitioningScene) return;
-        VNSessionBridge.LaunchMode = VNLaunchMode.NewGame;
+        if (_isTransitioning) return;
+        PlayOneShotSafe(clickSfxEventPath);
+
+        VNSessionBridge.CachedInkStateJson = string.Empty;
         VNSessionBridge.TargetSlotId = string.Empty;
-        LoadGameplaySceneAsync();
+        VNSessionBridge.LaunchMode = VNLaunchMode.NewGame;
+        TransitionToGameScene();
     }
 
-    private async void LoadGameplaySceneAsync()
+    private void OnLoadClicked()
     {
-        if (string.IsNullOrWhiteSpace(gameplaySceneName))
+        if (_isTransitioning || VNSaveManager.Instance == null) return;
+        PlayOneShotSafe(clickSfxEventPath);
+
+        IReadOnlyList<VNSaveSlotSummary> slots = VNSaveManager.Instance.GetAllSlotSummaries(includeAutosave: true);
+        _loadList.Clear();
+
+        foreach (VNSaveSlotSummary slot in slots)
         {
-            Debug.LogError("[MainMenuController] Gameplay Scene Name is empty.");
-            return;
+            string capturedId = slot.SlotId;
+            bool isEmpty = slot.IsEmpty;
+
+            var card = new Button(() =>
+            {
+                PlayOneShotSafe(clickSfxEventPath);
+                VNSessionBridge.CachedInkStateJson = string.Empty;
+                VNSessionBridge.TargetSlotId = capturedId;
+                VNSessionBridge.LaunchMode = VNLaunchMode.LoadSpecificSlot;
+                CloseModals();
+                TransitionToGameScene();
+            });
+
+            card.focusable = false;
+            card.AddToClassList("slot-card");
+            if (isEmpty)
+            {
+                card.AddToClassList("slot-card--empty");
+                card.SetEnabled(false);
+                card.pickingMode = PickingMode.Ignore;
+            }
+
+            var header = new VisualElement();
+            header.AddToClassList("slot-card__header");
+            header.pickingMode = PickingMode.Ignore;
+
+            var titleLbl = new Label(slot.Title);
+            titleLbl.AddToClassList("slot-card__title");
+            titleLbl.pickingMode = PickingMode.Ignore;
+
+            var timeLbl = new Label(slot.Timestamp);
+            timeLbl.AddToClassList("slot-card__time");
+            timeLbl.pickingMode = PickingMode.Ignore;
+
+            var previewLbl = new Label(slot.Preview);
+            previewLbl.AddToClassList("slot-card__preview");
+            previewLbl.pickingMode = PickingMode.Ignore;
+
+            header.Add(titleLbl);
+            header.Add(timeLbl);
+            card.Add(header);
+            card.Add(previewLbl);
+            _loadList.Add(card);
         }
 
-        _isTransitioningScene = true;
-        _buttonContainer.SetEnabled(false);
-
-        CancelAllSequenceWork();
-        _sequenceCts = new CancellationTokenSource();
-        CancellationToken token = _sequenceCts.Token;
-
-        try
-        {
-            // 1. Fade Main Menu out to solid black
-            _splashImage.style.backgroundImage = StyleKeyword.None;
-            _splashOverlay.style.display = DisplayStyle.Flex;
-            _splashOverlay.style.opacity = 0f;
-
-            await FadeElementAsync(_splashOverlay, 0f, 1f, menuFadeOutDuration, Ease.InQuad, token);
-
-            // 2. Hold on black screen before starting the game
-            if (preGameStartDelay > 0f)
-                await Awaitable.WaitForSecondsAsync(preGameStartDelay, token);
-
-            // 3. Load the VN gameplay scene
-            await SceneManager.LoadSceneAsync(gameplaySceneName);
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected if disabled or unloaded mid-transition
-        }
+        _modalOverlay.style.display = DisplayStyle.Flex;
+        _loadPanel.style.display = DisplayStyle.Flex;
+        _settingsPanel.style.display = DisplayStyle.None;
     }
 
-    private static void HandleExitClicked()
+    private void OnSettingsClicked()
     {
+        if (_isTransitioning) return;
+        PlayOneShotSafe(clickSfxEventPath);
+
+        _settingsView?.SyncFromManager();
+        _modalOverlay.style.display = DisplayStyle.Flex;
+        _settingsPanel.style.display = DisplayStyle.Flex;
+        _loadPanel.style.display = DisplayStyle.None;
+    }
+
+    private void CloseModals()
+    {
+        if (_modalOverlay != null) _modalOverlay.style.display = DisplayStyle.None;
+        if (_loadPanel != null) _loadPanel.style.display = DisplayStyle.None;
+        if (_settingsPanel != null) _settingsPanel.style.display = DisplayStyle.None;
+    }
+
+    private void OnExitClicked()
+    {
+        if (_isTransitioning) return;
+        PlayOneShotSafe(clickSfxEventPath);
+
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -424,23 +379,64 @@ public class MainMenuController : MonoBehaviour
 #endif
     }
 
-    private void CancelAllSequenceWork()
+    private void TransitionToGameScene()
     {
-        if (_activeTween.IsActive())
-            _activeTween.Cancel();
+        _isTransitioning = true;
+        StopMenuBgm(immediate: false);
 
-        if (_splashStepCts != null)
+        if (_fadeCurtain == null || sceneTransitionDuration <= 0f)
         {
-            _splashStepCts.Cancel();
-            _splashStepCts.Dispose();
-            _splashStepCts = null;
+            SceneManager.LoadSceneAsync(gameplaySceneName);
+            return;
         }
 
-        if (_sequenceCts != null)
+        _fadeCurtain.style.opacity = 0f;
+        _fadeCurtain.style.display = DisplayStyle.Flex;
+
+        LMotion.Create(0f, 1f, sceneTransitionDuration)
+            .WithEase(Ease.InOutQuad)
+            .WithOnComplete(() => SceneManager.LoadSceneAsync(gameplaySceneName))
+            .Bind(a => _fadeCurtain.style.opacity = a);
+    }
+
+    // =========================================================================
+    // FMOD AUDIO HELPERS
+    // =========================================================================
+
+    private void StartMenuBgm()
+    {
+        if (string.IsNullOrWhiteSpace(menuBgmEventPath) || !RuntimeManager.IsInitialized)
+            return;
+
+        try
         {
-            _sequenceCts.Cancel();
-            _sequenceCts.Dispose();
-            _sequenceCts = null;
+            _bgmInstance = RuntimeManager.CreateInstance(menuBgmEventPath);
+            _bgmInstance.start();
         }
+        catch (EventNotFoundException)
+        {
+            // Optional BGM event not configured yet
+        }
+    }
+
+    private void StopMenuBgm(bool immediate)
+    {
+        if (!_bgmInstance.isValid()) return;
+
+        _bgmInstance.stop(immediate ? FMOD.Studio.STOP_MODE.IMMEDIATE : FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+        _bgmInstance.release();
+        _bgmInstance.clearHandle();
+    }
+
+    private static void PlayOneShotSafe(string eventPath)
+    {
+        if (string.IsNullOrWhiteSpace(eventPath) || !RuntimeManager.IsInitialized)
+            return;
+
+        try
+        {
+            RuntimeManager.PlayOneShot(eventPath);
+        }
+        catch (EventNotFoundException) { }
     }
 }

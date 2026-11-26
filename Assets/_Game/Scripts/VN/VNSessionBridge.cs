@@ -13,6 +13,7 @@ public static class VNSessionBridge
     public static VNLaunchMode LaunchMode { get; set; } = VNLaunchMode.NewGame;
     public static string TargetSlotId { get; set; } = string.Empty;
     public static bool HasPlayedBootSplash { get; set; }
+    public static string CachedInkStateJson { get; set; } = string.Empty;
 
     public static bool HasAnySaveData()
     {

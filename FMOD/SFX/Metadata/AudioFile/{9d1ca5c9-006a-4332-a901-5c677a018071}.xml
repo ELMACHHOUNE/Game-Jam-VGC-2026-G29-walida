@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{9d1ca5c9-006a-4332-a901-5c677a018071}">
+		<property name="assetPath">
+			<value>SFX/scary effect.mp3</value>
+		</property>
+		<property name="isStreaming">
+			<value>true</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>24</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>24.239999999999998</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{2c5a2fae-0681-4dc7-b581-ab249f4857df}</destination>
+		</relationship>
+	</object>
+</objects>

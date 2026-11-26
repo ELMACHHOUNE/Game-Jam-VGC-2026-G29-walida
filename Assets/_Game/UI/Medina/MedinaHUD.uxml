@@ -1,0 +1,115 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="MedinaHUD.uss" />
+
+    <ui:VisualElement name="medina-hud-root" class="hud-root" picking-mode="Ignore">
+
+        <!-- Top-Left Location Signpost -->
+        <ui:VisualElement name="hud-location-plate" class="location-cutout-rim" picking-mode="Ignore">
+            <ui:VisualElement class="location-frame" picking-mode="Ignore">
+                <ui:VisualElement class="location-accent-bar" picking-mode="Ignore" />
+                <ui:VisualElement class="location-text-col" picking-mode="Ignore">
+                    <ui:Label name="hud-location-title" text="BAB OUDAYA" class="location-title" picking-mode="Ignore" />
+                    <ui:Label name="hud-location-subtitle" text="Rabat Medina" class="location-subtitle" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Top-Right 2.5D Action Cluster (Journal & Pause) -->
+        <ui:VisualElement name="hud-top-bar" class="hud-top-bar" picking-mode="Ignore">
+            <ui:VisualElement class="hud-btn-cutout-rim" picking-mode="Ignore">
+                <ui:Button name="btn-world-journal" class="hud-icon-btn" tooltip="Journal (J)">
+                    <ui:VisualElement name="icon-world-journal" class="hud-icon-btn__glyph hud-icon-btn__glyph--journal" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:Label text="J" class="hud-key-badge" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="hud-btn-cutout-rim" picking-mode="Ignore">
+                <ui:Button name="btn-world-pause" class="hud-icon-btn" tooltip="Pause (Esc)">
+                    <ui:VisualElement name="icon-world-pause" class="hud-icon-btn__glyph hud-icon-btn__glyph--pause" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:Label text="ESC" class="hud-key-badge" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Bottom-Center World Interaction Prompt -->
+        <ui:VisualElement name="hud-interact-prompt" class="interact-cutout-rim" style="display: none;" picking-mode="Ignore">
+            <ui:VisualElement class="interact-pill" picking-mode="Ignore">
+                <ui:Label name="hud-interact-key" text="E" class="interact-pill__key" picking-mode="Ignore" />
+                <ui:Label name="hud-interact-label" text="Speak" class="interact-pill__text" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Dimmed Backdrop for 2.5D Modals -->
+        <ui:VisualElement name="medina-modal-overlay" class="modal-overlay" style="display: none;">
+
+            <!-- Open Book Journal (4-Photo Spread, Slides Bottom-to-Up) -->
+            <ui:VisualElement name="journal-panel" class="journal-book-stage" style="display: none;">
+
+                <!-- Left Page: 2 Photographs -->
+                <ui:VisualElement name="journal-left-page" class="book-page book-page--left" picking-mode="Ignore">
+                    <ui:Label text="MEMORIES" class="book-page__header" picking-mode="Ignore" />
+
+                    <!-- Photo 1 (Top-Left) -->
+                    <ui:VisualElement name="photo-slot-0" class="photo-mount photo-mount--left-top">
+                        <ui:VisualElement name="photo-img-0" class="photo-mount__image" picking-mode="Ignore" />
+                        <ui:Label name="photo-cap-0" text="Photograph I" class="photo-mount__caption" picking-mode="Ignore" />
+                    </ui:VisualElement>
+
+                    <!-- Photo 2 (Bottom-Left) -->
+                    <ui:VisualElement name="photo-slot-1" class="photo-mount photo-mount--left-bottom">
+                        <ui:VisualElement name="photo-img-1" class="photo-mount__image" picking-mode="Ignore" />
+                        <ui:Label name="photo-cap-1" text="Photograph II" class="photo-mount__caption" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Right Page: 2 Photographs -->
+                <ui:VisualElement name="journal-right-page" class="book-page book-page--right" picking-mode="Ignore">
+                    <ui:Label text="" class="book-page__header" picking-mode="Ignore" />
+
+                    <!-- Photo 3 (Top-Right) -->
+                    <ui:VisualElement name="photo-slot-2" class="photo-mount photo-mount--right-top">
+                        <ui:VisualElement name="photo-img-2" class="photo-mount__image" picking-mode="Ignore" />
+                        <ui:Label name="photo-cap-2" text="Photograph III" class="photo-mount__caption" picking-mode="Ignore" />
+                    </ui:VisualElement>
+
+                    <!-- Photo 4 (Bottom-Right) -->
+                    <ui:VisualElement name="photo-slot-3" class="photo-mount photo-mount--right-bottom">
+                        <ui:VisualElement name="photo-img-3" class="photo-mount__image" picking-mode="Ignore" />
+                        <ui:Label name="photo-cap-3" text="Photograph IV" class="photo-mount__caption" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+            <!-- 2.5D Pause Menu -->
+            <ui:VisualElement name="world-pause-menu" class="modal-cutout-rim pause-rim" style="display: none;">
+                <ui:VisualElement class="parchment-modal pause-modal">
+                    <ui:VisualElement class="modal-arch-accent" />
+                    <ui:Label text="PAUSED" class="modal-title" />
+                    <ui:Label text="Oudaya Exploration" class="modal-subtitle" />
+                    <ui:Button name="btn-world-resume" text="RESUME" class="menu-btn menu-btn--primary" />
+                    <ui:Button name="btn-world-save" text="SAVE GAME" class="menu-btn" />
+                    <ui:Button name="btn-world-load" text="LOAD GAME" class="menu-btn" />
+                    <ui:Button name="btn-world-settings" text="SETTINGS" class="menu-btn" />
+                    <ui:Button name="btn-world-quit" text="MAIN MENU" class="menu-btn menu-btn--danger" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Save / Load Panel -->
+            <ui:VisualElement name="world-saveload-panel" class="modal-cutout-rim saveload-rim" style="display: none;">
+                <ui:VisualElement class="parchment-modal saveload-modal">
+                    <ui:VisualElement class="modal-arch-accent" />
+                    <ui:Label name="world-saveload-title" text="SAVE GAME" class="modal-title" />
+                    <ui:ScrollView name="world-saveload-list" class="saveload-list" />
+                    <ui:Button name="btn-world-saveload-back" text="BACK" class="menu-btn" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Settings Panel (Reuses VNSettingsView) -->
+            <ui:VisualElement name="world-settings-panel" class="modal-cutout-rim settings-rim" style="display: none;">
+                <ui:VisualElement name="world-settings-content" class="parchment-modal settings-modal" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

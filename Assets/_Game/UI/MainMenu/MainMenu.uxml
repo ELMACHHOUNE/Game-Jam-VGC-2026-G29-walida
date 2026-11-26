@@ -1,74 +1,85 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="MainMenu.uss" />
 
-    <ui:VisualElement name="menu-root" class="menu-root" picking-mode="Ignore">
+    <ui:VisualElement name="main-menu-root" class="menu-root">
 
-        <!-- LAYER 1: Full-Screen Menu Background -->
-        <ui:VisualElement name="menu-bg" class="fullscreen-layer menu-bg" picking-mode="Ignore" />
+        <!-- Optional Full-Screen Background (Auto-hides if left None so Camera/Scene BG shows) -->
+        <ui:VisualElement name="menu-bg" class="menu-bg" style="display: none;" picking-mode="Ignore" />
 
-        <!-- LAYER 2: Centered Logo & Vertical Button Stack -->
-        <ui:VisualElement name="menu-stage" class="fullscreen-layer menu-stage" picking-mode="Ignore">
-            <ui:VisualElement name="logo-wrapper" class="logo-wrapper" picking-mode="Ignore">
-                <ui:VisualElement name="logo-image" class="logo-image" picking-mode="Ignore" />
-            </ui:VisualElement>
+        <!-- Center Column Positioned Below the Book Emblem -->
+        <ui:VisualElement name="menu-center-column" class="menu-center-column" picking-mode="Ignore">
 
-            <ui:VisualElement name="button-container" class="button-container" picking-mode="Position">
-                <ui:Button name="btn-continue" class="menu-btn" text="CONTINUE" />
-                <ui:Button name="btn-new-game" class="menu-btn" text="NEW GAME" />
-                <ui:Button name="btn-settings" class="menu-btn" text="SETTINGS" />
-                <ui:Button name="btn-exit" class="menu-btn menu-btn--exit" text="EXIT" />
-            </ui:VisualElement>
-        </ui:VisualElement>
+            <!-- Optional Logo Image (Auto-hides if left None when baked into scene BG) -->
+            <ui:VisualElement name="menu-logo" class="menu-logo" style="display: none;" picking-mode="Ignore" />
 
-        <!-- LAYER 3: Settings Modal Overlay -->
-<!-- LAYER 3: Settings Modal Overlay -->
-        <ui:VisualElement name="settings-overlay" class="fullscreen-layer modal-overlay" picking-mode="Position">
-            <ui:VisualElement name="settings-panel" class="settings-panel" picking-mode="Position">
-                <ui:Label text="SETTINGS" class="settings-title" picking-mode="Ignore" />
+            <!-- Paper-Cutout Button Stack -->
+            <ui:VisualElement name="menu-button-stack" class="menu-button-stack">
 
-                <ui:VisualElement class="setting-row" picking-mode="Position">
-                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
-                        <ui:Label text="MUSIC (BGM)" class="setting-label" picking-mode="Ignore" />
-                        <ui:Label name="val-bgm" text="55%" class="setting-value" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                    <ui:Slider name="slider-bgm" class="vn-slider" low-value="0" high-value="1" value="0.55" />
+                <!-- CONTINUE -->
+                <ui:VisualElement name="rim-continue" class="menu-cutout-rim">
+                    <ui:Button name="btn-menu-continue" class="menu-btn menu-btn--primary">
+                        <ui:VisualElement class="menu-btn__bookmark" picking-mode="Ignore" />
+                        <ui:Label text="CONTINUE" class="menu-btn__label" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
 
-                <ui:VisualElement class="setting-row" picking-mode="Position">
-                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
-                        <ui:Label text="SOUND EFFECTS" class="setting-label" picking-mode="Ignore" />
-                        <ui:Label name="val-sfx" text="85%" class="setting-value" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                    <ui:Slider name="slider-sfx" class="vn-slider" low-value="0" high-value="1" value="0.85" />
+                <!-- NEW GAME -->
+                <ui:VisualElement name="rim-newgame" class="menu-cutout-rim">
+                    <ui:Button name="btn-menu-newgame" class="menu-btn">
+                        <ui:VisualElement class="menu-btn__bookmark" picking-mode="Ignore" />
+                        <ui:Label text="NEW GAME" class="menu-btn__label" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
 
-                <ui:VisualElement class="setting-row" picking-mode="Position">
-                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
-                        <ui:Label text="TEXT BLIPS" class="setting-label" picking-mode="Ignore" />
-                        <ui:Label name="val-voice" text="45%" class="setting-value" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                    <ui:Slider name="slider-voice" class="vn-slider" low-value="0" high-value="1" value="0.45" />
+                <!-- LOAD GAME -->
+                <ui:VisualElement name="rim-load" class="menu-cutout-rim">
+                    <ui:Button name="btn-menu-load" class="menu-btn">
+                        <ui:VisualElement class="menu-btn__bookmark" picking-mode="Ignore" />
+                        <ui:Label text="LOAD" class="menu-btn__label" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
 
-                <ui:VisualElement class="setting-row" picking-mode="Position">
-                    <ui:VisualElement class="setting-row__header" picking-mode="Ignore">
-                        <ui:Label text="TEXT SPEED" class="setting-label" picking-mode="Ignore" />
-                        <ui:Label name="val-speed" text="45 cps" class="setting-value" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                    <ui:Slider name="slider-speed" class="vn-slider" low-value="15" high-value="120" value="45" />
+                <!-- SETTINGS -->
+                <ui:VisualElement name="rim-settings" class="menu-cutout-rim">
+                    <ui:Button name="btn-menu-settings" class="menu-btn">
+                        <ui:VisualElement class="menu-btn__bookmark" picking-mode="Ignore" />
+                        <ui:Label text="SETTINGS" class="menu-btn__label" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
 
-                <ui:VisualElement class="settings-actions" picking-mode="Position">
-                    <ui:Button name="btn-settings-reset" class="menu-btn menu-btn--secondary" text="DEFAULTS" />
-                    <ui:Button name="btn-close-settings" class="menu-btn" text="BACK" />
+                <!-- EXIT -->
+                <ui:VisualElement name="rim-exit" class="menu-cutout-rim">
+                    <ui:Button name="btn-menu-exit" class="menu-btn menu-btn--exit">
+                        <ui:VisualElement class="menu-btn__bookmark" picking-mode="Ignore" />
+                        <ui:Label text="EXIT" class="menu-btn__label" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
+
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- LAYER 4: Boot Splash Screen Curtain -->
-        <ui:VisualElement name="splash-overlay" class="fullscreen-layer splash-overlay" picking-mode="Position">
-            <ui:VisualElement name="splash-image" class="splash-image" picking-mode="Ignore" />
+        <!-- Dimmed Backdrop for Load & Settings Modals -->
+        <ui:VisualElement name="menu-modal-overlay" class="modal-overlay" style="display: none;">
+
+            <!-- Load Game Modal -->
+            <ui:VisualElement name="menu-load-panel" class="modal-cutout-rim saveload-rim" style="display: none;">
+                <ui:VisualElement class="parchment-modal saveload-modal">
+                    <ui:VisualElement class="modal-arch-accent" />
+                    <ui:Label text="LOAD MEMORY" class="modal-title" />
+                    <ui:ScrollView name="menu-load-list" class="saveload-list" />
+                    <ui:Button name="btn-menu-load-back" text="BACK" class="modal-action-btn" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Settings Modal (Reuses VNSettingsView) -->
+            <ui:VisualElement name="menu-settings-panel" class="modal-cutout-rim settings-rim" style="display: none;">
+                <ui:VisualElement name="menu-settings-content" class="parchment-modal settings-modal" />
+            </ui:VisualElement>
+
         </ui:VisualElement>
+
+        <!-- Scene Transition Fade Curtain -->
+        <ui:VisualElement name="menu-fade-curtain" class="fade-curtain" style="opacity: 0; display: none;" picking-mode="Ignore" />
 
     </ui:VisualElement>
 </ui:UXML>

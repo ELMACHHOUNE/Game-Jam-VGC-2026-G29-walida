@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using FMOD.Studio;
+using FMODUnity;
 
 public class VNSettingsManager : MonoBehaviour
 {
@@ -37,12 +39,19 @@ public class VNSettingsManager : MonoBehaviour
         LoadFromPrefs();
     }
 
+    private void Start()
+    {
+        ApplyAllFmodBuses();
+    }
+
     public void LoadFromPrefs()
     {
         BgmVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(BgmVolumeKey, DefaultBgmVolume));
         SfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(SfxVolumeKey, DefaultSfxVolume));
         VoiceVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(VoiceVolumeKey, DefaultVoiceVolume));
         TextSpeed = Mathf.Clamp(PlayerPrefs.GetFloat(TextSpeedKey, DefaultTextSpeed), MinTextSpeed, MaxTextSpeed);
+
+        ApplyAllFmodBuses();
     }
 
     public void SetBgmVolume(float value)
@@ -53,6 +62,8 @@ public class VNSettingsManager : MonoBehaviour
         BgmVolume = clamped;
         PlayerPrefs.SetFloat(BgmVolumeKey, BgmVolume);
         PlayerPrefs.Save();
+
+        SetBusVolumeSafe("bus:/BGM", BgmVolume);
         OnSettingsChanged?.Invoke();
     }
 
@@ -64,6 +75,8 @@ public class VNSettingsManager : MonoBehaviour
         SfxVolume = clamped;
         PlayerPrefs.SetFloat(SfxVolumeKey, SfxVolume);
         PlayerPrefs.Save();
+
+        SetBusVolumeSafe("bus:/SFX", SfxVolume);
         OnSettingsChanged?.Invoke();
     }
 
@@ -75,6 +88,8 @@ public class VNSettingsManager : MonoBehaviour
         VoiceVolume = clamped;
         PlayerPrefs.SetFloat(VoiceVolumeKey, VoiceVolume);
         PlayerPrefs.Save();
+
+        SetBusVolumeSafe("bus:/UI", VoiceVolume);
         OnSettingsChanged?.Invoke();
     }
 
@@ -102,6 +117,29 @@ public class VNSettingsManager : MonoBehaviour
         PlayerPrefs.SetFloat(TextSpeedKey, TextSpeed);
         PlayerPrefs.Save();
 
+        ApplyAllFmodBuses();
         OnSettingsChanged?.Invoke();
+    }
+
+    public void ApplyAllFmodBuses()
+    {
+        SetBusVolumeSafe("bus:/BGM", BgmVolume);
+        SetBusVolumeSafe("bus:/SFX", SfxVolume);
+        SetBusVolumeSafe("bus:/UI", VoiceVolume);
+    }
+
+    private static void SetBusVolumeSafe(string busPath, float volume)
+    {
+        if (!RuntimeManager.IsInitialized) return;
+
+        try
+        {
+            Bus bus = RuntimeManager.GetBus(busPath);
+            bus.setVolume(Mathf.Clamp01(volume));
+        }
+        catch (BusNotFoundException)
+        {
+            // Bank or bus not loaded yet; Start() or VNStoryController.OnEnable() will re-apply
+        }
     }
 }

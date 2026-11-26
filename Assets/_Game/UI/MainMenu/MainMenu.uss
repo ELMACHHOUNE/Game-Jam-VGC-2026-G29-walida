@@ -1,197 +1,370 @@
-:root {
-    --color-bg-panel: rgba(14, 17, 24, 0.90);
-    --color-bg-btn: rgba(20, 25, 36, 0.88);
-    --color-bg-btn-hover: rgba(38, 48, 68, 0.96);
-    --color-border: rgba(255, 255, 255, 0.16);
-    --color-accent: rgb(118, 169, 250);
-    --color-text-primary: rgb(243, 244, 246);
-    --color-text-muted: rgb(156, 163, 175);
-}
-
 .menu-root {
-    flex-grow: 1;
-    background-color: rgb(0, 0, 0);
-}
-
-.fullscreen-layer {
     position: absolute;
     left: 0;
     top: 0;
     right: 0;
     bottom: 0;
+    align-items: center;
 }
 
-/* --- LAYER 1: Background --- */
 .menu-bg {
-    background-color: rgb(10, 12, 18);
-    background-size: cover;
-    background-position: center center;
-    opacity: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    -unity-background-scale-mode: scale-and-crop;
 }
 
-/* --- LAYER 2: Stage, Logo & Buttons --- */
-.menu-stage {
-    flex-direction: column;
+/* =========================================================================
+   CENTER LAYOUT & PAPER-CUTOUT BUTTON STACK
+   ========================================================================= */
+
+.menu-center-column {
+    position: absolute;
+    top: 37%;
     align-items: center;
     justify-content: flex-start;
 }
 
-.logo-wrapper {
-    align-self: center;
+.menu-logo {
+    width: 440px;
+    height: 220px;
+    margin-bottom: 18px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.menu-button-stack {
     align-items: center;
-    justify-content: center;
-    opacity: 0;
-}
-
-.logo-image {
-    width: 640px;
-    height: 260px;
-    background-size: contain;
-    background-position: center center;
-}
-
-.button-container {
     flex-direction: column;
-    align-items: center;
-    width: 320px;
-    opacity: 0;
+}
+
+.menu-cutout-rim {
+    background-color: #FFFFFF;
+    padding: 2px;
+    border-radius: 12px;
+    margin-bottom: 11px;
+    transition-property: scale, translate;
+    transition-duration: 0.14s;
+}
+
+.menu-cutout-rim:hover {
+    scale: 1.04;
+}
+
+.menu-cutout-rim:active {
+    scale: 0.97;
+}
+
+.menu-cutout-rim--disabled {
+    opacity: 0.52;
+}
+
+.menu-cutout-rim--disabled:hover {
+    scale: 1;
 }
 
 .menu-btn {
-    width: 100%;
-    margin-bottom: 14px;
-    padding: 15px 24px;
-    font-size: 18px;
-    -unity-font-style: bold;
-    letter-spacing: 2px;
-    color: var(--color-text-primary);
-    background-color: var(--color-bg-btn);
-    border-color: var(--color-border);
-    border-width: 1px;
-    border-radius: 6px;
-    scale: 1 1;
-    transition-property: background-color, border-color, scale;
+    width: 310px;
+    height: 48px;
+    margin: 0;
+    padding: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: #F3EBDD;
+    border-color: #153B56;
+    border-width: 2.5px;
+    border-radius: 10px;
+    overflow: hidden;
+    transition-property: background-color, border-color;
     transition-duration: 0.14s;
 }
 
 .menu-btn:hover {
-    background-color: var(--color-bg-btn-hover);
-    border-color: var(--color-accent);
-    scale: 1.03 1.03;
+    background-color: #FFFDF8;
+    border-color: #9E533B;
 }
 
+.menu-btn__bookmark {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 7px;
+    background-color: #C69868;
+    transition-property: width, background-color;
+    transition-duration: 0.14s;
+}
+
+.menu-btn:hover .menu-btn__bookmark {
+    width: 12px;
+    background-color: #9E533B;
+}
+
+.menu-btn__label {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: #231D18;
+    letter-spacing: 2px;
+    -unity-text-align: middle-center;
+    margin: 0;
+    padding: 0;
+}
+
+/* Primary Highlight for Active CONTINUE Button */
+.menu-btn--primary {
+    background-color: #153B56;
+    border-color: #153B56;
+}
+
+.menu-btn--primary .menu-btn__bookmark {
+    background-color: #D98A3C;
+}
+
+.menu-btn--primary .menu-btn__label {
+    color: #F7F1E5;
+}
+
+.menu-btn--primary:hover {
+    background-color: #1E5074;
+    border-color: #D98A3C;
+}
+
+.menu-btn--primary:hover .menu-btn__bookmark {
+    background-color: #E8A456;
+}
+
+/* Subtle Terracotta Accent on EXIT Hover */
 .menu-btn--exit:hover {
-    border-color: rgb(248, 113, 113);
-    background-color: rgba(127, 29, 29, 0.55);
+    background-color: #F7EAE4;
+    border-color: #8F3D29;
 }
 
-/* --- LAYER 3: Settings Overlay --- */
+.menu-btn--exit:hover .menu-btn__label {
+    color: #7A2E1D;
+}
+
+/* =========================================================================
+   MODALS (LOAD GAME & SETTINGS — MATCHES 2.5D MEDINA HUD)
+   ========================================================================= */
+
 .modal-overlay {
-    display: none;
-    justify-content: center;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(14, 22, 34, 0.72);
     align-items: center;
-    background-color: rgba(6, 8, 12, 0.84);
+    justify-content: center;
 }
 
-.settings-panel {
-    width: 500px;
-    padding: 36px 36px 26px 36px;
+.modal-cutout-rim {
+    background-color: #FFFFFF;
+    padding: 3px;
+    border-radius: 16px;
+}
+
+.parchment-modal {
+    background-color: #EBE0CB;
+    border-color: #153B56;
+    border-width: 2.5px;
+    border-radius: 13px;
+    padding: 28px;
+    color: #231D18;
+}
+
+.modal-arch-accent {
+    width: 64px;
+    height: 5px;
+    background-color: #9E533B;
+    border-radius: 3px;
+    align-self: center;
+    margin-bottom: 12px;
+}
+
+.saveload-rim {
+    width: 600px;
+    max-height: 80%;
+}
+
+.saveload-modal {
     align-items: stretch;
-    background-color: var(--color-bg-panel);
-    border-color: var(--color-border);
-    border-width: 1px;
-    border-radius: 12px;
 }
 
-.settings-title {
-    margin-bottom: 24px;
+.settings-rim {
+    width: 580px;
+}
+
+.settings-modal {
+    align-items: stretch;
+}
+
+.modal-title {
     font-size: 24px;
     -unity-font-style: bold;
-    letter-spacing: 3px;
-    color: var(--color-text-primary);
+    color: #231D18;
+    letter-spacing: 1.5px;
     -unity-text-align: middle-center;
+    margin-bottom: 14px;
 }
 
-.setting-row {
-    margin-bottom: 18px;
-    flex-direction: column;
+.modal-action-btn {
+    height: 46px;
+    margin-top: 10px;
+    background-color: #DFD1B5;
+    border-color: #231D18;
+    border-width: 1.5px;
+    border-radius: 8px;
+    color: #231D18;
+    font-size: 15px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    transition-property: background-color, scale;
+    transition-duration: 0.1s;
 }
 
-.setting-row__header {
+.modal-action-btn:hover {
+    background-color: #D2C09C;
+    scale: 1.02;
+}
+
+.saveload-list {
+    max-height: 360px;
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+
+.slot-card {
+    background-color: #F5EDE0;
+    border-color: #231D18;
+    border-width: 1.5px;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+    transition-property: background-color, border-color;
+    transition-duration: 0.1s;
+}
+
+.slot-card:hover {
+    background-color: #FFFDF8;
+    border-color: #9E533B;
+}
+
+.slot-card--empty {
+    opacity: 0.52;
+}
+
+.slot-card__header {
+    width: 100%;
     flex-direction: row;
     justify-content: space-between;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
-.setting-label {
-    font-size: 14px;
+.slot-card__title {
+    font-size: 15px;
     -unity-font-style: bold;
+    color: #153B56;
+}
+
+.slot-card__time {
+    font-size: 12px;
+    color: rgba(35, 29, 24, 0.72);
+}
+
+.slot-card__preview {
+    font-size: 13px;
+    color: #231D18;
+    white-space: normal;
+}
+
+/* Settings Controls (VNSettingsView) */
+.settings-title {
+    font-size: 24px;
+    -unity-font-style: bold;
+    color: #231D18;
     letter-spacing: 1.5px;
-    color: var(--color-text-primary);
+    -unity-text-align: middle-center;
+    margin-bottom: 14px;
 }
 
-.setting-value {
+.settings-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background-color: #F5EDE0;
+    border-color: rgba(35, 29, 24, 0.25);
+    border-width: 1px;
+    border-radius: 8px;
+}
+
+.settings-label {
+    width: 150px;
     font-size: 14px;
     -unity-font-style: bold;
-    color: var(--color-accent);
-}
-
-.vn-slider {
-    height: 24px;
+    color: #231D18;
     margin: 0;
 }
 
-.vn-slider .unity-base-slider__tracker {
+.settings-slider {
+    flex-grow: 1;
+    margin-left: 10px;
+    margin-right: 12px;
+}
+
+.settings-slider .unity-base-slider__tracker {
     height: 6px;
-    background-color: rgba(255, 255, 255, 0.14);
-    border-width: 0;
+    background-color: rgba(35, 29, 24, 0.24);
     border-radius: 3px;
-}
-
-.vn-slider .unity-base-slider__dragger {
-    width: 18px;
-    height: 18px;
-    margin-top: -6px;
-    background-color: var(--color-accent);
     border-width: 0;
-    border-radius: 9px;
 }
 
-.vn-slider .unity-base-slider__dragger:hover {
-    background-color: rgb(165, 200, 255);
+.settings-slider .unity-base-slider__dragger {
+    width: 16px;
+    height: 16px;
+    margin-top: -5px;
+    background-color: #9E533B;
+    border-color: #FFFFFF;
+    border-width: 1.5px;
+    border-radius: 8px;
 }
 
-.vn-slider .unity-base-slider__dragger-border {
-    display: none;
+.settings-value {
+    width: 64px;
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: #153B56;
+    -unity-text-align: middle-right;
+    margin: 0;
 }
 
 .settings-actions {
-    margin-top: 10px;
     flex-direction: row;
     justify-content: space-between;
+    margin-top: 8px;
 }
 
 .settings-actions .menu-btn {
-    width: 48%;
-    margin-bottom: 0;
+    width: auto;
+    height: 44px;
+    flex-grow: 1;
+    margin-left: 6px;
+    margin-right: 6px;
+    background-color: #DFD1B5;
+    border-width: 1.5px;
+    border-color: #231D18;
 }
 
-.menu-btn--secondary {
-    color: var(--color-text-muted);
-}
-/* --- LAYER 4: Boot Splash Curtain --- */
-.splash-overlay {
-    display: none;
-    justify-content: center;
-    align-items: center;
-    background-color: rgb(0, 0, 0);
-    opacity: 1;
-}
-
-.splash-image {
-    width: 68%;
-    height: 55%;
-    background-size: contain;
-    background-position: center center;
-    opacity: 0;
+.fade-curtain {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #000000;
 }

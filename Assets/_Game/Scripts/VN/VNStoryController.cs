@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using Ink.Runtime;
-using LitMotion;
+using FMOD.Studio;
+using FMODUnity;
 
 public class VNStoryController : MonoBehaviour
 {
@@ -13,13 +16,6 @@ public class VNStoryController : MonoBehaviour
     {
         public string id;
         public Sprite sprite;
-    }
-
-    [Serializable]
-    public struct NamedAudio
-    {
-        public string id;
-        public AudioClip clip;
     }
 
     [Header("Dependencies")]
@@ -45,19 +41,8 @@ public class VNStoryController : MonoBehaviour
     [SerializeField] private float choiceRevealDelay = 1.0f;
     [SerializeField] private bool cancelAutoOnManualClick = true;
 
-    [Header("Audio Registries")]
-    [SerializeField] private List<NamedAudio> sfxClips = new();
-    [SerializeField] private List<NamedAudio> bgmTracks = new();
-
-    [Header("Audio Channels & Timings")]
-    [SerializeField] private AudioSource sfxAudioSource;
-    [SerializeField] private AudioSource bgmSourceA;
-    [SerializeField] private AudioSource bgmSourceB;
-    [SerializeField, Range(0f, 1f)] private float sfxVolume = 0.85f;
-    [SerializeField, Range(0f, 1f)] private float bgmVolume = 0.55f;
-    [SerializeField] private float bgmFadeDuration = 0.8f;
+    [Header("Audio Settings (FMOD)")]
     [SerializeField] private bool pauseAudioOnPauseMenu = true;
-    public string CurrentBgmId => _currentBgmId;
 
     [Header("Optional Keyboard/Gamepad Input")]
     [SerializeField] private InputActionReference advanceInputAction;
@@ -65,31 +50,39 @@ public class VNStoryController : MonoBehaviour
 
     [Header("Exploration Integration")]
     [SerializeField] private bool startStoryOnBoot = false;
+    [SerializeField] private bool deferBootToFlowController = true;
 
     private Story _story;
     private readonly Dictionary<string, Sprite> _bgLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Sprite> _cgLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _visitedChoicePaths = new();
-    private readonly Dictionary<string, AudioClip> _sfxLookup = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, AudioClip> _bgmLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<VNBacklogEntry> _backlog = new();
+
     public event Action OnDialogueEnded;
 
+    private EventInstance _activeBgmInstance;
+    private string _currentBgmPath = string.Empty;
+    private EventInstance _activeLoopSfxInstance;
 
-    private AudioSource _activeBgmSource;
-    private string _currentBgmId = string.Empty;
-    private MotionHandle _bgmFadeTween;
     private bool _isAutoMode;
     private bool _isPaused;
     private bool _hasStarted;
     private bool _areChoicesVisible;
+    private bool _isStepping;
+    private bool _autoAdvanceCurrentLine;
+
     private CancellationTokenSource _modeCts;
+    private CancellationTokenSource _stepCts;
+    private CancellationTokenSource _bgmTimerCts;
+    private CancellationTokenSource _loopSfxTimerCts;
+
     private string _currentBgId = string.Empty;
     private string _currentCgId = string.Empty;
     private string _lastSpeaker = string.Empty;
     private string _lastDialogue = string.Empty;
 
     public Story CurrentStory => _story;
+    public string CurrentBgmId => _currentBgmPath;
     public bool IsAutoMode => _isAutoMode;
     public bool IsPaused => _isPaused;
 
@@ -106,28 +99,6 @@ public class VNStoryController : MonoBehaviour
             if (!string.IsNullOrWhiteSpace(entry.id) && entry.sprite != null)
                 _cgLookup[entry.id.Trim()] = entry.sprite;
         }
-        foreach (var entry in sfxClips)
-        {
-            if (!string.IsNullOrWhiteSpace(entry.id) && entry.clip != null)
-                _sfxLookup[entry.id.Trim()] = entry.clip;
-        }
-
-        foreach (var entry in bgmTracks)
-        {
-            if (!string.IsNullOrWhiteSpace(entry.id) && entry.clip != null)
-                _bgmLookup[entry.id.Trim()] = entry.clip;
-        }
-
-        if (sfxAudioSource == null)
-            sfxAudioSource = CreateChildAudioSource("VN_SFX_Channel", loop: false);
-
-        if (bgmSourceA == null)
-            bgmSourceA = CreateChildAudioSource("VN_BGM_Channel_A", loop: true);
-
-        if (bgmSourceB == null)
-            bgmSourceB = CreateChildAudioSource("VN_BGM_Channel_B", loop: true);
-
-        _activeBgmSource = bgmSourceA;
     }
 
     private void OnValidate()
@@ -148,8 +119,7 @@ public class VNStoryController : MonoBehaviour
         }
 
         if (VNSettingsManager.Instance != null)
-            VNSettingsManager.Instance.OnSettingsChanged += ApplyAudioSettings;
-        ApplyAudioSettings();
+            VNSettingsManager.Instance.ApplyAllFmodBuses();
 
         stageView.OnViewReady += HandleViewReady;
         stageView.OnAdvanceRequested += HandleAdvanceRequested;
@@ -162,7 +132,7 @@ public class VNStoryController : MonoBehaviour
         stageView.OnSaveClicked += OpenSaveModal;
         stageView.OnLoadClicked += OpenLoadModal;
         stageView.OnSaveSlotSelected += HandleSaveSlotSelected;
-        stageView.OnSaveLoadBackClicked += () => stageView.ShowPauseMenu(true);
+        stageView.OnSaveLoadBackClicked += HandleSaveLoadBackClicked;
         stageView.OnQuitClicked += QuitToMainMenu;
         stageView.OnLogClicked += OpenBacklogModal;
         stageView.OnBacklogBackClicked += CloseBacklogModal;
@@ -187,11 +157,8 @@ public class VNStoryController : MonoBehaviour
     private void OnDisable()
     {
         CancelModeTimer();
+        CancelStepTask();
         Time.timeScale = 1f;
-
-        // Inside OnDisable():
-        if (VNSettingsManager.Instance != null)
-            VNSettingsManager.Instance.OnSettingsChanged -= ApplyAudioSettings;
 
         if (stageView != null)
         {
@@ -206,6 +173,7 @@ public class VNStoryController : MonoBehaviour
             stageView.OnSaveClicked -= OpenSaveModal;
             stageView.OnLoadClicked -= OpenLoadModal;
             stageView.OnSaveSlotSelected -= HandleSaveSlotSelected;
+            stageView.OnSaveLoadBackClicked -= HandleSaveLoadBackClicked;
             stageView.OnQuitClicked -= QuitToMainMenu;
             stageView.OnLogClicked -= OpenBacklogModal;
             stageView.OnBacklogBackClicked -= CloseBacklogModal;
@@ -218,23 +186,111 @@ public class VNStoryController : MonoBehaviour
             toggleAutoInputAction.action.performed -= HandleToggleAutoPerformed;
     }
 
+    private void OnDestroy()
+    {
+        CancelModeTimer();
+        CancelStepTask();
+        StopFmodInstance(ref _activeBgmInstance, immediate: true);
+        StopFmodInstance(ref _activeLoopSfxInstance, immediate: true);
+    }
+
     private void Update()
     {
-        if (!stageView.IsDialogueVisible) return;
+        if (stageView == null || !stageView.IsDialogueVisible) return;
 
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             TogglePause();
     }
 
-    private void ApplyAudioSettings()
+    // =========================================================================
+    // RUNTIME ASSET REGISTRATION (Used by Testing/Showcase Harness)
+    // =========================================================================
+
+    public void RegisterBackground(string id, Sprite sprite)
     {
-        if (VNSettingsManager.Instance == null) return;
+        if (!string.IsNullOrWhiteSpace(id) && sprite != null)
+            _bgLookup[id.Trim()] = sprite;
+    }
 
-        bgmVolume = VNSettingsManager.Instance.BgmVolume;
-        sfxVolume = VNSettingsManager.Instance.SfxVolume;
+    public void RegisterEventCG(string id, Sprite sprite)
+    {
+        if (!string.IsNullOrWhiteSpace(id) && sprite != null)
+            _cgLookup[id.Trim()] = sprite;
+    }
 
-        if (_activeBgmSource != null && _activeBgmSource.isPlaying && !_bgmFadeTween.IsActive())
-            _activeBgmSource.volume = bgmVolume;
+    private static void CancelTokenSource(ref CancellationTokenSource cts)
+    {
+        if (cts != null)
+        {
+            cts.Cancel();
+            cts.Dispose();
+            cts = null;
+        }
+    }
+
+    // =========================================================================
+    // STORY LOADING, INITIALIZATION & NAVIGATION
+    // =========================================================================
+
+    public void EnsureStoryInitialized()
+    {
+        if (_story != null || inkJsonAsset == null)
+            return;
+
+        _story = new Story(inkJsonAsset.text);
+        _visitedChoicePaths.Clear();
+        _backlog.Clear();
+
+        if (!string.IsNullOrEmpty(VNSessionBridge.CachedInkStateJson))
+        {
+            _story.state.LoadJson(VNSessionBridge.CachedInkStateJson);
+            VNSessionBridge.CachedInkStateJson = string.Empty;
+        }
+    }
+
+    public void CacheInkStateForSceneTransition()
+    {
+        if (_story != null)
+            VNSessionBridge.CachedInkStateJson = _story.state.ToJson();
+    }
+
+    public void JumpToKnot(string knotName, bool clearStageFirst = true)
+    {
+        if (string.IsNullOrWhiteSpace(knotName))
+            return;
+
+        EnsureStoryInitialized();
+        if (_story == null)
+        {
+            Debug.LogWarning("[VNStoryController] No Ink JSON asset assigned to jump.");
+            return;
+        }
+
+        try
+        {
+            _story.ChoosePathString(knotName);
+        }
+        catch (StoryException)
+        {
+            string available = string.Join(", ", _story.mainContentContainer.namedContent.Keys);
+            Debug.LogWarning($"[VNStoryController] Knot '{knotName}' not found in compiled JSON. Available knots: [{available}]");
+            return;
+        }
+
+        CancelStepTask();
+        CancelModeTimer();
+        SetPaused(false, showPauseMenu: false);
+        SetAutoMode(false);
+        _areChoicesVisible = false;
+
+        if (clearStageFirst && stageView != null)
+        {
+            stageView.ClearAllCharacters();
+            stageView.HideEventCG(instant: true);
+            stageView.HideChoices();
+        }
+
+        StepStory(instantPresentation: false);
     }
 
     private void HandleViewReady()
@@ -243,7 +299,11 @@ public class VNStoryController : MonoBehaviour
         if (_hasStarted) return;
         _hasStarted = true;
 
-        if (inkJsonAsset == null) return;
+        if (deferBootToFlowController || inkJsonAsset == null)
+            return;
+
+        if (VNSessionBridge.LaunchMode == VNLaunchMode.NewGame && !startStoryOnBoot)
+            EnsureStoryInitialized();
 
         if (VNSessionBridge.LaunchMode == VNLaunchMode.ContinueLatest && VNSaveManager.Instance != null)
         {
@@ -273,55 +333,6 @@ public class VNStoryController : MonoBehaviour
         }
     }
 
-    private AudioSource CreateChildAudioSource(string childName, bool loop)
-    {
-        var go = new GameObject(childName);
-        go.transform.SetParent(transform, false);
-        var src = go.AddComponent<AudioSource>();
-        src.playOnAwake = false;
-        src.loop = loop;
-        src.volume = loop ? 0f : 1f;
-        return src;
-    }
-
-    private void OnDestroy()
-    {
-        if (_bgmFadeTween.IsActive())
-            _bgmFadeTween.Cancel();
-    }
-
-    public void RegisterSFX(string id, AudioClip clip)
-    {
-        if (!string.IsNullOrWhiteSpace(id) && clip != null)
-            _sfxLookup[id.Trim()] = clip;
-    }
-
-    public void RegisterBGM(string id, AudioClip clip)
-    {
-        if (!string.IsNullOrWhiteSpace(id) && clip != null)
-            _bgmLookup[id.Trim()] = clip;
-    }
-
-    // =========================================================================
-    // RUNTIME ASSET REGISTRATION (Used by Testing/Showcase Harness)
-    // =========================================================================
-
-    public void RegisterBackground(string id, Sprite sprite)
-    {
-        if (!string.IsNullOrWhiteSpace(id) && sprite != null)
-            _bgLookup[id.Trim()] = sprite;
-    }
-
-    public void RegisterEventCG(string id, Sprite sprite)
-    {
-        if (!string.IsNullOrWhiteSpace(id) && sprite != null)
-            _cgLookup[id.Trim()] = sprite;
-    }
-
-    // =========================================================================
-    // STORY LOADING & NAVIGATION
-    // =========================================================================
-
     public void LoadStory(TextAsset compiledInkJson, string startKnot = null)
     {
         if (compiledInkJson == null)
@@ -330,7 +341,9 @@ public class VNStoryController : MonoBehaviour
             return;
         }
 
-        SetPaused(false);
+        CancelStepTask();
+        CancelModeTimer();
+        SetPaused(false, showPauseMenu: false);
         SetAutoMode(false);
         _areChoicesVisible = false;
         _visitedChoicePaths.Clear();
@@ -345,45 +358,6 @@ public class VNStoryController : MonoBehaviour
         StepStory(instantPresentation: false);
     }
 
-    public void JumpToKnot(string knotName, bool clearStageFirst = true)
-    {
-        if (_story == null)
-        {
-            if (inkJsonAsset != null)
-            {
-                LoadStory(inkJsonAsset, knotName);
-                return;
-            }
-
-            Debug.LogWarning("[VNStoryController] No story loaded to jump.");
-            return;
-        }
-
-        try
-        {
-            _story.ChoosePathString(knotName);
-        }
-        catch (StoryException)
-        {
-            string available = string.Join(", ", _story.mainContentContainer.namedContent.Keys);
-            Debug.LogWarning($"[VNStoryController] Knot '{knotName}' not found in compiled JSON. Available knots: [{available}]");
-            return;
-        }
-
-        SetPaused(false);
-        SetAutoMode(false);
-        _areChoicesVisible = false;
-
-        if (clearStageFirst)
-        {
-            stageView.ClearAllCharacters();
-            stageView.HideEventCG(instant: true);
-            stageView.HideChoices();
-        }
-
-        StepStory(instantPresentation: false);
-    }
-
     // =========================================================================
     // CORE INK EXECUTION LOOP
     // =========================================================================
@@ -391,35 +365,72 @@ public class VNStoryController : MonoBehaviour
     private void StepStory(bool instantPresentation)
     {
         if (_story == null) return;
+
         CancelModeTimer();
+        CancelStepTask();
+        _stepCts = new CancellationTokenSource();
+        _ = StepStoryAsync(instantPresentation, _stepCts.Token);
+    }
 
-        while (_story.canContinue)
+    private async Awaitable StepStoryAsync(bool instantPresentation, CancellationToken ct)
+    {
+        _isStepping = true;
+
+        try
         {
-            string rawLine = _story.Continue();
-            string speakerOverride = ProcessTags(_story.currentTags, instantPresentation);
-            string trimmedLine = rawLine.Trim();
+            while (_story.canContinue)
+            {
+                ct.ThrowIfCancellationRequested();
 
-            if (string.IsNullOrEmpty(trimmedLine))
-                continue;
+                string rawLine = _story.Continue();
+                List<string> tags = new List<string>(_story.currentTags);
+                _autoAdvanceCurrentLine = false;
 
-            _areChoicesVisible = false;
-            ExtractSpeakerAndText(trimmedLine, speakerOverride, out string speaker, out string dialogue);
-            RecordBacklogEntry(speaker, dialogue, isChoice: false);
-            _lastSpeaker = speaker;
-            _lastDialogue = dialogue;
-            stageView.PresentLine(speaker, dialogue, instant: instantPresentation);
-            return;
+                string trimmedLine = rawLine.Trim();
+                bool isContinueToken = trimmedLine.Equals("[continue]", StringComparison.OrdinalIgnoreCase);
+
+                // Clear the dialogue box if pre-line #wait tags or [continue] are about to execute
+                if (!instantPresentation && (HasWaitTag(tags) || isContinueToken))
+                    stageView.PresentLine(string.Empty, string.Empty, instant: true);
+
+                string speakerOverride = await ProcessTagsAsync(tags, instantPresentation, ct);
+
+                if (string.IsNullOrEmpty(trimmedLine) || isContinueToken)
+                    continue;
+
+                ExtractSpeakerAndText(trimmedLine, speakerOverride, out string speaker, out string dialogue);
+                if (dialogue.Equals("[blank]", StringComparison.OrdinalIgnoreCase))
+                    dialogue = string.Empty;
+
+                // If #continue was tagged onto a [blank] line, advance immediately
+                if (_autoAdvanceCurrentLine && string.IsNullOrEmpty(dialogue))
+                    continue;
+
+                _areChoicesVisible = false;
+                RecordBacklogEntry(speaker, dialogue, isChoice: false);
+                _lastSpeaker = speaker;
+                _lastDialogue = dialogue;
+                _isStepping = false;
+                stageView.PresentLine(speaker, dialogue, instant: instantPresentation);
+                return;
+            }
+
+            _isStepping = false;
+
+            if (_story.currentChoices.Count > 0)
+            {
+                PresentCurrentChoices();
+            }
+            else
+            {
+                _areChoicesVisible = false;
+                SetAutoMode(false);
+                OnDialogueEnded?.Invoke();
+            }
         }
-
-        if (_story.currentChoices.Count > 0)
+        catch (OperationCanceledException)
         {
-            PresentCurrentChoices();
-        }
-        else
-        {
-            _areChoicesVisible = false;
-            SetAutoMode(false);
-            OnDialogueEnded?.Invoke();
+            _isStepping = false;
         }
     }
 
@@ -428,143 +439,266 @@ public class VNStoryController : MonoBehaviour
         _areChoicesVisible = true;
         var options = new List<VNChoiceOption>(_story.currentChoices.Count);
 
+
         foreach (Choice choice in _story.currentChoices)
         {
             bool visited = _visitedChoicePaths.Contains(choice.pathStringOnChoice);
-            options.Add(new VNChoiceOption(choice.text.Trim(), visited));
+            string cleanText = System.Text.RegularExpressions.Regex.Replace(
+    choice.text.Trim(), @"\s*\[[\+\-]?\d+\]\s*$", string.Empty);
+            options.Add(new VNChoiceOption(cleanText, visited));
         }
 
         stageView.ShowChoices(options);
     }
 
     // =========================================================================
-    // INK TAG PARSER (#bg:, #cg:, #char:, #hide:, #speaker:, #clear)
+    // INK TAG PARSER (#bg:, #cg:, #char:, #hide:, #speaker:, #bgm:, #sfx:, #wait)
     // =========================================================================
 
-    private string ProcessTags(List<string> tags, bool instant)
+    private async Awaitable<string> ProcessTagsAsync(List<string> tags, bool instant, CancellationToken ct)
     {
         string speakerOverride = null;
         if (tags == null || tags.Count == 0) return null;
 
-        foreach (string rawTag in tags)
+        for (int i = 0; i < tags.Count; i++)
         {
-            if (string.IsNullOrWhiteSpace(rawTag)) continue;
+            ct.ThrowIfCancellationRequested();
 
-            string[] parts = rawTag.Trim().Split(':');
-            string command = parts[0].Trim().ToLowerInvariant();
+            string rawTag = tags[i]?.Trim();
+            if (string.IsNullOrEmpty(rawTag))
+                continue;
 
-            switch (command)
+            // Support both "#wait 2" and "#wait:2"
+            if (TryParseWaitSeconds(rawTag, out float waitSeconds))
             {
-                case "bg" when parts.Length >= 2:
-                    {
-                        string bgId = parts[1].Trim();
-                        bool forceInstant = instant || (parts.Length >= 3 && parts[2].Trim().Equals("instant", StringComparison.OrdinalIgnoreCase));
-                        _currentBgId = bgId.Equals("none", StringComparison.OrdinalIgnoreCase) ? string.Empty : bgId;
-
-                        if (bgId.Equals("none", StringComparison.OrdinalIgnoreCase))
-                            stageView.SetBackground(null, forceInstant);
-                        else if (_bgLookup.TryGetValue(bgId, out Sprite sprite))
-                            stageView.SetBackground(sprite, forceInstant);
-                        else
-                            Debug.LogWarning($"[VNStoryController] Background ID not found: '{bgId}'");
-                        break;
-                    }
-
-                case "cg" when parts.Length >= 2:
-                    {
-                        string cgId = parts[1].Trim();
-                        bool forceInstant = instant || (parts.Length >= 3 && parts[2].Trim().Equals("instant", StringComparison.OrdinalIgnoreCase));
-                        _currentCgId = (cgId.Equals("hide", StringComparison.OrdinalIgnoreCase) || cgId.Equals("none", StringComparison.OrdinalIgnoreCase)) ? string.Empty : cgId;
-
-                        if (cgId.Equals("hide", StringComparison.OrdinalIgnoreCase) || cgId.Equals("none", StringComparison.OrdinalIgnoreCase))
-                            stageView.HideEventCG(forceInstant);
-                        else if (_cgLookup.TryGetValue(cgId, out Sprite sprite))
-                            stageView.ShowEventCG(sprite, forceInstant);
-                        else
-                            Debug.LogWarning($"[VNStoryController] Event CG ID not found: '{cgId}'");
-                        break;
-                    }
-
-                case "char" when parts.Length >= 2:
-                    {
-                        string charId = parts[1].Trim();
-                        string expression = parts.Length >= 3 && !string.IsNullOrWhiteSpace(parts[2])
-                            ? parts[2].Trim()
-                            : "neutral";
-
-                        StageSlot slot = StageSlot.Auto;
-                        if (parts.Length >= 4)
-                        {
-                            slot = parts[3].Trim().ToLowerInvariant() switch
-                            {
-                                "left" => StageSlot.Left,
-                                "center" => StageSlot.Center,
-                                "right" => StageSlot.Right,
-                                _ => StageSlot.Auto
-                            };
-                        }
-
-                        stageView.ShowCharacter(charId, expression, slot);
-                        break;
-                    }
-
-                case "hide" when parts.Length >= 2:
-                    {
-                        string target = parts[1].Trim();
-                        if (target.Equals("all", StringComparison.OrdinalIgnoreCase))
-                            stageView.ClearAllCharacters();
-                        else
-                            stageView.HideCharacter(target);
-                        break;
-                    }
-
-                case "speaker" when parts.Length >= 2:
-                    {
-                        speakerOverride = parts[1].Trim();
-                        break;
-                    }
-
-                case "sfx" when parts.Length >= 2:
-                    {
-                        // Suppress one-shot SFX when fast-forwarding skipped lines
-                        if (instant) break;
-
-                        string sfxId = parts[1].Trim();
-                        float volumeScale = 1f;
-                        if (parts.Length >= 3 && float.TryParse(parts[2].Trim(), System.Globalization.NumberStyles.Float,
-                            System.Globalization.CultureInfo.InvariantCulture, out float parsedVol))
-                        {
-                            volumeScale = Mathf.Clamp01(parsedVol);
-                        }
-
-                        PlaySFX(sfxId, volumeScale);
-                        break;
-                    }
-
-                case "bgm" when parts.Length >= 2:
-                case "ambience" when parts.Length >= 2:
-                    {
-                        string bgmId = parts[1].Trim();
-                        bool forceInstant = instant || (parts.Length >= 3 && parts[2].Trim().Equals("instant", StringComparison.OrdinalIgnoreCase));
-
-                        if (bgmId.Equals("none", StringComparison.OrdinalIgnoreCase) || bgmId.Equals("stop", StringComparison.OrdinalIgnoreCase))
-                            StopBGM(forceInstant);
-                        else
-                            PlayBGM(bgmId, forceInstant);
-                        break;
-                    }
-
-                case "clear":
-                    {
-                        stageView.ClearAllCharacters();
-                        stageView.HideEventCG(instant);
-                        _currentCgId = string.Empty;
-                        break;
-                    }
+                if (!instant && waitSeconds > 0f)
+                    await WaitScaledSecondsAsync(waitSeconds, ct);
+                continue;
             }
+
+            ApplyTagImmediate(rawTag, instant, ref speakerOverride);
         }
 
         return speakerOverride;
+    }
+
+    private void ApplyTagImmediate(string rawTag, bool instant, ref string speakerOverride)
+    {
+        // Split ONLY on the first colon so FMOD paths like "event:/SFX/PhoneRing" stay intact
+        int colonIdx = rawTag.IndexOf(':');
+        string command = colonIdx >= 0
+            ? rawTag.Substring(0, colonIdx).Trim().ToLowerInvariant()
+            : rawTag.ToLowerInvariant();
+        string payload = colonIdx >= 0
+            ? rawTag.Substring(colonIdx + 1).Trim()
+            : string.Empty;
+
+        switch (command)
+        {
+            case "bg" when !string.IsNullOrEmpty(payload):
+                {
+                    SplitOptionalSuffix(payload, out string bgId, out string suffix);
+                    bool forceInstant = instant || suffix.Equals("instant", StringComparison.OrdinalIgnoreCase);
+                    _currentBgId = bgId.Equals("none", StringComparison.OrdinalIgnoreCase) ? string.Empty : bgId;
+
+                    if (bgId.Equals("none", StringComparison.OrdinalIgnoreCase))
+                        stageView.SetBackground(null, forceInstant);
+                    else if (_bgLookup.TryGetValue(bgId, out Sprite sprite))
+                        stageView.SetBackground(sprite, forceInstant);
+                    else
+                        Debug.LogWarning($"[VNStoryController] Background ID not found: '{bgId}'");
+                    break;
+                }
+
+            case "cg" when !string.IsNullOrEmpty(payload):
+                {
+                    SplitOptionalSuffix(payload, out string cgId, out string suffix);
+                    bool forceInstant = instant || suffix.Equals("instant", StringComparison.OrdinalIgnoreCase);
+                    bool hideCg = cgId.Equals("hide", StringComparison.OrdinalIgnoreCase) || cgId.Equals("none", StringComparison.OrdinalIgnoreCase);
+                    _currentCgId = hideCg ? string.Empty : cgId;
+
+                    if (hideCg)
+                        stageView.HideEventCG(forceInstant);
+                    else if (_cgLookup.TryGetValue(cgId, out Sprite sprite))
+                        stageView.ShowEventCG(sprite, forceInstant);
+                    else
+                        Debug.LogWarning($"[VNStoryController] Event CG ID not found: '{cgId}'");
+                    break;
+                }
+
+            case "char" when !string.IsNullOrEmpty(payload):
+                {
+                    string[] charParts = payload.Split(':');
+                    string charId = charParts[0].Trim();
+                    string expression = charParts.Length >= 2 && !string.IsNullOrWhiteSpace(charParts[1])
+                        ? charParts[1].Trim()
+                        : "neutral";
+
+                    StageSlot slot = StageSlot.Auto;
+                    if (charParts.Length >= 3)
+                    {
+                        slot = charParts[2].Trim().ToLowerInvariant() switch
+                        {
+                            "left" => StageSlot.Left,
+                            "center" => StageSlot.Center,
+                            "right" => StageSlot.Right,
+                            _ => StageSlot.Auto
+                        };
+                    }
+
+                    stageView.ShowCharacter(charId, expression, slot);
+                    break;
+                }
+
+            case "hide" when !string.IsNullOrEmpty(payload):
+                {
+                    if (payload.Equals("all", StringComparison.OrdinalIgnoreCase))
+                        stageView.ClearAllCharacters();
+                    else
+                        stageView.HideCharacter(payload);
+                    break;
+                }
+
+            case "speaker" when !string.IsNullOrEmpty(payload):
+                {
+                    speakerOverride = payload;
+                    break;
+                }
+
+            case "sfx" when !string.IsNullOrEmpty(payload):
+                {
+                    if (!instant)
+                        PlaySFX(payload);
+                    break;
+                }
+
+            case "sfx_loop" when !string.IsNullOrEmpty(payload):
+                {
+                    if (!instant)
+                    {
+                        SplitOptionalDuration(payload, out string eventPath, out float duration);
+                        StartLoopingSFX(eventPath, duration);
+                    }
+                    break;
+                }
+
+            case "sfx_param" when !string.IsNullOrEmpty(payload):
+                {
+                    // Format: #sfx_param:DistortionLevel:0.70
+                    int paramColon = payload.IndexOf(':');
+                    if (paramColon > 0 &&
+                        float.TryParse(payload.Substring(paramColon + 1).Trim(),
+                            NumberStyles.Float, CultureInfo.InvariantCulture, out float paramVal))
+                    {
+                        SetLoopingSfxParameter(payload.Substring(0, paramColon).Trim(), paramVal);
+                    }
+                    break;
+                }
+
+            case "sfx_stop":
+                {
+                    StopLoopingSFX(instant);
+                    break;
+                }
+
+            case "bgm" when !string.IsNullOrEmpty(payload):
+            case "ambience" when !string.IsNullOrEmpty(payload):
+                {
+                    if (payload.Equals("none", StringComparison.OrdinalIgnoreCase) ||
+                        payload.Equals("stop", StringComparison.OrdinalIgnoreCase))
+                    {
+                        StopBGM(instant);
+                    }
+                    else
+                    {
+                        SplitOptionalDuration(payload, out string eventPath, out float duration);
+                        PlayBGM(eventPath, instant, duration);
+                    }
+                    break;
+                }
+
+            case "bgm_stop":
+                {
+                    StopBGM(instant);
+                    break;
+                }
+
+            case "clear":
+                {
+                    stageView.ClearAllCharacters();
+                    stageView.HideEventCG(instant);
+                    _currentCgId = string.Empty;
+                    break;
+                }
+
+            case "continue":
+                {
+                    _autoAdvanceCurrentLine = true;
+                    break;
+                }
+
+            case "glitch":
+                {
+                    if (!instant)
+                    {
+                        float dur = 0.35f;
+                        if (!string.IsNullOrEmpty(payload))
+                            float.TryParse(payload, NumberStyles.Float, CultureInfo.InvariantCulture, out dur);
+                        stageView.TriggerGlitch(dur);
+                    }
+                    break;
+                }
+        }
+    }
+
+    private static bool TryParseWaitSeconds(string rawTag, out float seconds)
+    {
+        seconds = 0f;
+        if (!rawTag.StartsWith("wait", StringComparison.OrdinalIgnoreCase) || rawTag.Length <= 4)
+            return false;
+
+        char delimiter = rawTag[4];
+        if (delimiter != ':' && !char.IsWhiteSpace(delimiter))
+            return false;
+
+        string numPart = rawTag.Substring(5).Trim();
+        return float.TryParse(numPart, NumberStyles.Float, CultureInfo.InvariantCulture, out seconds);
+    }
+
+    private static bool HasWaitTag(List<string> tags)
+    {
+        if (tags == null) return false;
+        for (int i = 0; i < tags.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(tags[i]) && TryParseWaitSeconds(tags[i].Trim(), out _))
+                return true;
+        }
+        return false;
+    }
+
+    private static void SplitOptionalSuffix(string payload, out string primary, out string suffix)
+    {
+        int idx = payload.LastIndexOf(':');
+        if (idx > 0)
+        {
+            primary = payload.Substring(0, idx).Trim();
+            suffix = payload.Substring(idx + 1).Trim();
+        }
+        else
+        {
+            primary = payload;
+            suffix = string.Empty;
+        }
+    }
+
+    private static async Awaitable WaitScaledSecondsAsync(float duration, CancellationToken ct)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            await Awaitable.NextFrameAsync(ct);
+            elapsed += Time.deltaTime;
+        }
     }
 
     private static void ExtractSpeakerAndText(string line, string tagOverride, out string speaker, out string text)
@@ -599,10 +733,11 @@ public class VNStoryController : MonoBehaviour
     private void HandleInputActionPerformed(InputAction.CallbackContext ctx) => HandleAdvanceRequested();
     private void HandleToggleAutoPerformed(InputAction.CallbackContext ctx) => ToggleAutoMode();
     private void HandleResumeClicked() => SetPaused(false);
+    private void HandleSaveLoadBackClicked() => stageView.ShowPauseMenu(true);
 
     private void HandleAdvanceRequested()
     {
-        if (_story == null || _isPaused || !stageView.IsDialogueVisible) return;
+        if (_story == null || _isPaused || _isStepping || !stageView.IsDialogueVisible) return;
 
         if (_isAutoMode && cancelAutoOnManualClick)
             SetAutoMode(false);
@@ -662,7 +797,7 @@ public class VNStoryController : MonoBehaviour
             isWaitingForChoice = _areChoicesVisible,
             backgroundId = _currentBgId,
             eventCgId = _currentCgId,
-            bgmId = _currentBgmId,
+            bgmId = _currentBgmPath,
             activeSpeakerId = stageView.GetActiveSpeakerId(),
             characters = stageView.CaptureCharacterStates()
         };
@@ -673,9 +808,10 @@ public class VNStoryController : MonoBehaviour
         if (data == null || inkJsonAsset == null)
             return;
 
-        SetPaused(false);
-        SetAutoMode(false);
+        CancelStepTask();
         CancelModeTimer();
+        SetPaused(false, showPauseMenu: false);
+        SetAutoMode(false);
 
         _story = new Story(inkJsonAsset.text);
         _story.state.LoadJson(data.inkStateJson);
@@ -700,7 +836,8 @@ public class VNStoryController : MonoBehaviour
         else
             stageView.HideEventCG(instant: true);
 
-        // 2. Restore BGM
+        // 2. Restore FMOD BGM & clear any stale looping SFX
+        StopLoopingSFX(instant: true);
         if (!string.IsNullOrEmpty(data.bgmId))
             PlayBGM(data.bgmId, instant: true);
         else
@@ -748,7 +885,6 @@ public class VNStoryController : MonoBehaviour
     private void OpenSaveModal()
     {
         if (VNSaveManager.Instance == null) return;
-        // Manual Save shows Slots 1-3 (Autosave is reserved for automatic choice checkpoints)
         var slots = VNSaveManager.Instance.GetAllSlotSummaries(includeAutosave: false);
         stageView.ShowSaveLoadModal(isSaveMode: true, slots);
     }
@@ -756,7 +892,6 @@ public class VNStoryController : MonoBehaviour
     private void OpenLoadModal()
     {
         if (VNSaveManager.Instance == null) return;
-        // Load shows Autosave Checkpoint + Slots 1-3
         var slots = VNSaveManager.Instance.GetAllSlotSummaries(includeAutosave: true);
         stageView.ShowSaveLoadModal(isSaveMode: false, slots);
     }
@@ -769,7 +904,7 @@ public class VNStoryController : MonoBehaviour
         {
             VNSaveData data = CaptureSaveData(slotId.ToUpperInvariant());
             VNSaveManager.Instance.SaveToSlot(slotId, data);
-            OpenSaveModal(); // Refresh slot timestamps and previews immediately
+            OpenSaveModal();
         }
         else
         {
@@ -782,9 +917,12 @@ public class VNStoryController : MonoBehaviour
     private async void QuitToMainMenu()
     {
         CancelModeTimer();
+        CancelStepTask();
+        StopFmodInstance(ref _activeBgmInstance, immediate: true);
+        StopFmodInstance(ref _activeLoopSfxInstance, immediate: true);
         Time.timeScale = 1f;
         VNSessionBridge.LaunchMode = VNLaunchMode.NewGame;
-        await UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(mainMenuSceneName);
+        await SceneManager.LoadSceneAsync(mainMenuSceneName);
     }
 
     public void ToggleAutoMode()
@@ -804,7 +942,7 @@ public class VNStoryController : MonoBehaviour
 
         if (_isAutoMode)
         {
-            if (!_isPaused && !stageView.IsTyping && _story != null && !_areChoicesVisible)
+            if (!_isPaused && !_isStepping && !stageView.IsTyping && _story != null && !_areChoicesVisible)
                 StartDelayedAdvanceAsync(autoAdvanceDelay);
         }
         else
@@ -838,23 +976,19 @@ public class VNStoryController : MonoBehaviour
             Time.timeScale = 1f;
             stageView.ShowPauseMenu(false);
 
-            if (_isAutoMode && !stageView.IsTyping && _story != null && !_areChoicesVisible)
+            if (_isAutoMode && !_isStepping && !stageView.IsTyping && _story != null && !_areChoicesVisible)
                 StartDelayedAdvanceAsync(autoAdvanceDelay);
         }
 
-        if (pauseAudioOnPauseMenu)
+        if (pauseAudioOnPauseMenu && RuntimeManager.IsInitialized)
         {
-            if (paused)
+            try
             {
-                sfxAudioSource?.Pause();
-                bgmSourceA?.Pause();
-                bgmSourceB?.Pause();
+                RuntimeManager.GetBus("bus:/BGM").setPaused(paused);
+                RuntimeManager.GetBus("bus:/SFX").setPaused(paused);
             }
-            else
+            catch (BusNotFoundException)
             {
-                sfxAudioSource?.UnPause();
-                bgmSourceA?.UnPause();
-                bgmSourceB?.UnPause();
             }
         }
     }
@@ -878,6 +1012,7 @@ public class VNStoryController : MonoBehaviour
 
         SetAutoMode(false);
         CancelModeTimer();
+        CancelStepTask();
 
         if (stageView.IsTyping)
             stageView.CompleteTyping();
@@ -890,14 +1025,28 @@ public class VNStoryController : MonoBehaviour
         {
             string rawLine = _story.Continue();
             bool hasSceneBreakTag = HasSceneBreakTag(_story.currentTags);
-            string speakerOverride = ProcessTags(_story.currentTags, instant: true);
-            string trimmedLine = rawLine.Trim();
+            string speakerOverride = null;
 
-            if (string.IsNullOrEmpty(trimmedLine))
+
+            foreach (string rawTag in _story.currentTags)
+            {
+                if (!string.IsNullOrWhiteSpace(rawTag))
+                    ApplyTagImmediate(rawTag.Trim(), instant: true, ref speakerOverride);
+            }
+
+            string trimmedLine = rawLine.Trim();
+            if (string.IsNullOrEmpty(trimmedLine) ||
+                trimmedLine.Equals("[continue]", StringComparison.OrdinalIgnoreCase))
+            {
                 continue;
+            }
 
             ExtractSpeakerAndText(trimmedLine, speakerOverride, out string speaker, out string dialogue);
+            if (dialogue.Equals("[blank]", StringComparison.OrdinalIgnoreCase))
+                dialogue = string.Empty;
             RecordBacklogEntry(speaker, dialogue, isChoice: false);
+            _lastSpeaker = speaker;
+            _lastDialogue = dialogue;
             pendingSpeaker = speaker;
             pendingDialogue = dialogue;
 
@@ -943,7 +1092,8 @@ public class VNStoryController : MonoBehaviour
         foreach (string tag in tags)
         {
             if (string.IsNullOrWhiteSpace(tag)) continue;
-            string cmd = tag.Trim().Split(':')[0].Trim().ToLowerInvariant();
+            int colonIdx = tag.IndexOf(':');
+            string cmd = (colonIdx >= 0 ? tag.Substring(0, colonIdx) : tag).Trim().ToLowerInvariant();
             if (cmd == "scene" || cmd == "bg")
                 return true;
         }
@@ -952,7 +1102,15 @@ public class VNStoryController : MonoBehaviour
 
     private void HandleLineTypingCompleted()
     {
-        if (_story == null || _isPaused || _areChoicesVisible) return;
+        if (_story == null || _isPaused || _isStepping || _areChoicesVisible) return;
+
+        if (_autoAdvanceCurrentLine)
+        {
+            _autoAdvanceCurrentLine = false;
+            if (_story.canContinue || _story.currentChoices.Count > 0)
+                StepStory(instantPresentation: false);
+            return;
+        }
 
         if (!_story.canContinue && _story.currentChoices.Count > 0)
         {
@@ -977,7 +1135,7 @@ public class VNStoryController : MonoBehaviour
         try
         {
             await Awaitable.WaitForSecondsAsync(delay, token);
-            if (token.IsCancellationRequested || _isPaused) return;
+            if (token.IsCancellationRequested || _isPaused || _isStepping) return;
 
             if (_story != null && !_areChoicesVisible && (_story.canContinue || _story.currentChoices.Count > 0))
                 StepStory(instantPresentation: false);
@@ -997,101 +1155,162 @@ public class VNStoryController : MonoBehaviour
         }
     }
 
-    public void PlaySFX(string sfxId, float volumeMultiplier = 1f)
+    private void CancelStepTask()
     {
-        if (string.IsNullOrWhiteSpace(sfxId) || sfxAudioSource == null)
-            return;
-
-        if (_sfxLookup.TryGetValue(sfxId, out AudioClip clip))
-            sfxAudioSource.PlayOneShot(clip, sfxVolume * Mathf.Clamp01(volumeMultiplier));
-        else
-            Debug.LogWarning($"[VNStoryController] SFX ID not found: '{sfxId}'");
+        _isStepping = false;
+        if (_stepCts != null)
+        {
+            _stepCts.Cancel();
+            _stepCts.Dispose();
+            _stepCts = null;
+        }
     }
 
-    public void PlayBGM(string bgmId, bool instant = false)
+    // =========================================================================
+    // FMOD STUDIO AUDIO PLAYBACK
+    // =========================================================================
+
+    public void PlaySFX(string eventPath)
     {
-        if (string.IsNullOrWhiteSpace(bgmId))
+        if (string.IsNullOrWhiteSpace(eventPath) || !RuntimeManager.IsInitialized)
             return;
 
-        // Avoid restarting the track if consecutive scenes share the same BGM
-        if (string.Equals(_currentBgmId, bgmId, StringComparison.OrdinalIgnoreCase) &&
-            _activeBgmSource != null && _activeBgmSource.isPlaying)
+        try
+        {
+            RuntimeManager.PlayOneShot(eventPath);
+        }
+        catch (EventNotFoundException)
+        {
+            Debug.LogWarning($"[VNStoryController] FMOD SFX event not found: '{eventPath}'");
+        }
+    }
+
+    private static void SplitOptionalDuration(string payload, out string eventPath, out float durationSeconds)
+    {
+        durationSeconds = 0f;
+        int lastColon = payload.LastIndexOf(':');
+        if (lastColon > 0 &&
+            float.TryParse(payload.Substring(lastColon + 1).Trim(),
+                NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed) &&
+            parsed > 0f)
+        {
+            eventPath = payload.Substring(0, lastColon).Trim();
+            durationSeconds = parsed;
+            return;
+        }
+
+        eventPath = payload;
+    }
+
+
+
+    public void PlayBGM(string eventPath, bool instant = false, float autoStopAfterSeconds = 0f)
+    {
+        if (string.IsNullOrWhiteSpace(eventPath) || !RuntimeManager.IsInitialized)
+            return;
+
+        if (string.Equals(_currentBgmPath, eventPath, StringComparison.OrdinalIgnoreCase) &&
+            _activeBgmInstance.isValid())
         {
             return;
         }
 
-        if (!_bgmLookup.TryGetValue(bgmId, out AudioClip nextClip))
+        StopFmodInstance(ref _activeBgmInstance, immediate: instant);
+        CancelTokenSource(ref _bgmTimerCts);
+
+        try
         {
-            Debug.LogWarning($"[VNStoryController] BGM ID not found: '{bgmId}'");
-            return;
-        }
+            _currentBgmPath = eventPath;
+            _activeBgmInstance = RuntimeManager.CreateInstance(eventPath);
+            _activeBgmInstance.start();
 
-        if (_bgmFadeTween.IsActive())
-            _bgmFadeTween.Cancel();
-
-        _currentBgmId = bgmId;
-        AudioSource outgoing = _activeBgmSource;
-        AudioSource incoming = (_activeBgmSource == bgmSourceA) ? bgmSourceB : bgmSourceA;
-        _activeBgmSource = incoming;
-
-        incoming.clip = nextClip;
-        incoming.loop = true;
-
-        if (instant || bgmFadeDuration <= 0f)
-        {
-            outgoing.Stop();
-            outgoing.volume = 0f;
-            incoming.volume = bgmVolume;
-            incoming.Play();
-            return;
-        }
-
-        float outgoingStartVol = outgoing.isPlaying ? outgoing.volume : 0f;
-        incoming.volume = 0f;
-        incoming.Play();
-
-        _bgmFadeTween = LMotion.Create(0f, 1f, bgmFadeDuration)
-            .WithEase(Ease.Linear)
-            .WithOnComplete(() =>
+            if (autoStopAfterSeconds > 0f)
             {
-                outgoing.Stop();
-                outgoing.volume = 0f;
-                incoming.volume = bgmVolume;
-            })
-            .Bind(t =>
-            {
-                outgoing.volume = Mathf.Lerp(outgoingStartVol, 0f, t);
-                incoming.volume = Mathf.Lerp(0f, bgmVolume, t);
-            });
+                _bgmTimerCts = new CancellationTokenSource();
+                _ = AutoStopBgmAfterAsync(autoStopAfterSeconds, _bgmTimerCts.Token);
+            }
+        }
+        catch (EventNotFoundException)
+        {
+            _currentBgmPath = string.Empty;
+            Debug.LogWarning($"[VNStoryController] FMOD BGM event not found: '{eventPath}'");
+        }
     }
 
     public void StopBGM(bool instant = false)
     {
-        if (_bgmFadeTween.IsActive())
-            _bgmFadeTween.Cancel();
+        CancelTokenSource(ref _bgmTimerCts);
+        _currentBgmPath = string.Empty;
+        StopFmodInstance(ref _activeBgmInstance, immediate: instant);
+    }
 
-        _currentBgmId = string.Empty;
-
-        if (_activeBgmSource == null || !_activeBgmSource.isPlaying)
+    public void StartLoopingSFX(string eventPath, float autoStopAfterSeconds = 0f)
+    {
+        if (string.IsNullOrWhiteSpace(eventPath) || !RuntimeManager.IsInitialized)
             return;
 
-        AudioSource target = _activeBgmSource;
+        StopFmodInstance(ref _activeLoopSfxInstance, immediate: true);
+        CancelTokenSource(ref _loopSfxTimerCts);
 
-        if (instant || bgmFadeDuration <= 0f)
+        try
         {
-            target.Stop();
-            target.volume = 0f;
-            return;
-        }
+            _activeLoopSfxInstance = RuntimeManager.CreateInstance(eventPath);
+            _activeLoopSfxInstance.start();
 
-        float startVol = target.volume;
-        _bgmFadeTween = LMotion.Create(startVol, 0f, bgmFadeDuration)
-            .WithEase(Ease.Linear)
-            .WithOnComplete(() =>
+            if (autoStopAfterSeconds > 0f)
             {
-                target.Stop();
-                target.volume = 0f;
-            })
-            .Bind(v => target.volume = v);
+                _loopSfxTimerCts = new CancellationTokenSource();
+                _ = AutoStopLoopSfxAfterAsync(autoStopAfterSeconds, _loopSfxTimerCts.Token);
+            }
+        }
+        catch (EventNotFoundException)
+        {
+            Debug.LogWarning($"[VNStoryController] FMOD looping SFX event not found: '{eventPath}'");
+        }
+    }
+
+
+    public void SetLoopingSfxParameter(string paramName, float value)
+    {
+        if (_activeLoopSfxInstance.isValid())
+            _activeLoopSfxInstance.setParameterByName(paramName, value);
+    }
+
+    public void StopLoopingSFX(bool instant = false)
+    {
+        CancelTokenSource(ref _loopSfxTimerCts);
+        StopFmodInstance(ref _activeLoopSfxInstance, immediate: instant);
+    }
+
+    private async Awaitable AutoStopBgmAfterAsync(float seconds, CancellationToken ct)
+    {
+        try
+        {
+            await WaitScaledSecondsAsync(seconds, ct);
+            if (!ct.IsCancellationRequested)
+                StopBGM(instant: false);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Awaitable AutoStopLoopSfxAfterAsync(float seconds, CancellationToken ct)
+    {
+        try
+        {
+            await WaitScaledSecondsAsync(seconds, ct);
+            if (!ct.IsCancellationRequested)
+                StopLoopingSFX(instant: false);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private static void StopFmodInstance(ref EventInstance instance, bool immediate)
+    {
+        if (!instance.isValid())
+            return;
+
+        instance.stop(immediate ? FMOD.Studio.STOP_MODE.IMMEDIATE : FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+        instance.release();
+        instance.clearHandle();
     }
 }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{47ad81a6-889c-434c-b759-820fbed08ec5}">
+		<property name="assetPath">
+			<value>SFX/mic distotion.mp3</value>
+		</property>
+		<property name="isStreaming">
+			<value>true</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>44.0999985</value>
+		</property>
+		<property name="channelCount">
+			<value>1</value>
+		</property>
+		<property name="length">
+			<value>42.501224489795916</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{2c5a2fae-0681-4dc7-b581-ab249f4857df}</destination>
+		</relationship>
+	</object>
+</objects>

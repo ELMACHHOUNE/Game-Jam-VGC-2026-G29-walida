@@ -1,0 +1,467 @@
+.hud-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* =========================================================================
+   TOP-LEFT LOCATION SIGNPOST
+   ========================================================================= */
+
+.location-cutout-rim {
+    position: absolute;
+    top: 24px;
+    left: 28px;
+    background-color: #FFFFFF;
+    padding: 2px;
+    border-radius: 10px;
+}
+
+.location-frame {
+    flex-direction: row;
+    align-items: center;
+    background-color: #F3EBDD;
+    border-color: #153B56;
+    border-width: 2px;
+    border-radius: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    padding-left: 10px;
+    padding-right: 18px;
+}
+
+.location-accent-bar {
+    width: 5px;
+    height: 30px;
+    background-color: #9E533B;
+    border-radius: 3px;
+    margin-right: 10px;
+}
+
+.location-text-col {
+    flex-direction: column;
+}
+
+.location-title {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: #231D18;
+    letter-spacing: 1px;
+    margin: 0;
+    padding: 0;
+}
+
+.location-subtitle {
+    font-size: 11px;
+    color: #153B56;
+    -unity-font-style: bold;
+    margin-top: 1px;
+    margin-bottom: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+}
+
+/* =========================================================================
+   TOP-RIGHT ACTION BUTTONS (JOURNAL & PAUSE)
+   ========================================================================= */
+
+.hud-top-bar {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.hud-btn-cutout-rim {
+    margin-left: 14px;
+    background-color: #FFFFFF;
+    padding: 2px;
+    border-radius: 14px;
+    transition-property: scale;
+    transition-duration: 0.12s;
+}
+
+.hud-btn-cutout-rim:hover {
+    scale: 1.06;
+}
+
+.hud-btn-cutout-rim:active {
+    scale: 0.95;
+}
+
+.hud-icon-btn {
+    width: 54px;
+    height: 54px;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: #F3EBDD;
+    border-color: #153B56;
+    border-width: 2.5px;
+    border-radius: 12px;
+    transition-property: background-color, border-color;
+    transition-duration: 0.12s;
+}
+
+.hud-icon-btn:hover {
+    background-color: #FFFDF8;
+    border-color: #9E533B;
+}
+
+.hud-icon-btn__glyph {
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-icon-btn__glyph--journal {
+    width: 28px;
+    height: 28px;
+}
+
+.hud-icon-btn__glyph--pause {
+    width: 21px;
+    height: 21px;
+}
+
+.hud-key-badge {
+    position: absolute;
+    bottom: -6px;
+    align-self: center;
+    background-color: #153B56;
+    color: #F7F1E5;
+    border-color: #FFFFFF;
+    border-width: 1.5px;
+    border-radius: 5px;
+    font-size: 9px;
+    -unity-font-style: bold;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    margin: 0;
+}
+
+/* =========================================================================
+   BOTTOM-CENTER INTERACTION PROMPT PILL
+   ========================================================================= */
+
+.interact-cutout-rim {
+    position: absolute;
+    bottom: 34px;
+    align-self: center;
+    background-color: #FFFFFF;
+    padding: 2px;
+    border-radius: 22px;
+}
+
+.interact-pill {
+    flex-direction: row;
+    align-items: center;
+    background-color: #F3EBDD;
+    border-color: #153B56;
+    border-width: 2px;
+    border-radius: 20px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-left: 8px;
+    padding-right: 16px;
+}
+
+.interact-pill__key {
+    background-color: #9E533B;
+    color: #FFFDF8;
+    font-size: 12px;
+    -unity-font-style: bold;
+    border-radius: 12px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin-right: 8px;
+}
+
+.interact-pill__text {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: #231D18;
+    margin: 0;
+    padding: 0;
+}
+
+/* =========================================================================
+   MODAL OVERLAY & OPEN BOOK JOURNAL SPREAD (3:2 ASPECT RATIO)
+   ========================================================================= */
+
+.modal-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(16, 24, 32, 0.68);
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.journal-book-stage {
+    width: 1080px;
+    height: 720px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Writable areas aligned inside empty Book.png left & right pages */
+.book-page {
+    position: absolute;
+    top: 12%;
+    bottom: 10.5%;
+    flex-direction: column;
+}
+
+.book-page--left {
+    left: 15.2%;
+    width: 34.2%;
+    padding: 8px 14px;
+    justify-content: space-between;
+}
+
+.book-page--right {
+    left: 51.5%;
+    width: 35.8%;
+    padding: 8px 14px;
+    justify-content: space-between;
+}
+
+.book-page__header {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgba(35, 29, 24, 0.72);
+    letter-spacing: 1.4px;
+    margin: 0;
+    padding: 0;
+}
+
+/* Archival Polaroid / Print Photo Mounts */
+/* Archival Polaroid / Print Photo Mounts (2 Left + 2 Right) */
+.photo-mount {
+    background-color: #FAF6EE;
+    border-color: rgba(35, 29, 24, 0.38);
+    border-width: 1.5px;
+    border-bottom-width: 3px;
+    border-right-width: 2.5px;
+    border-radius: 3px;
+    padding: 8px 8px 10px 8px;
+    flex-direction: column;
+    transition-property: scale;
+    transition-duration: 0.15s;
+}
+
+.photo-mount:hover {
+    scale: 1.03;
+}
+
+.photo-mount--left-top {
+    height: 44%;
+    rotate: -1.6deg;
+}
+
+.photo-mount--left-bottom {
+    height: 44%;
+    rotate: 1.4deg;
+}
+
+.photo-mount--right-top {
+    height: 44%;
+    rotate: 1.3deg;
+}
+
+.photo-mount--right-bottom {
+    height: 44%;
+    rotate: -1.5deg;
+}
+
+.photo-mount__image {
+    flex-grow: 1;
+    background-color: rgba(35, 29, 24, 0.08);
+    border-color: rgba(35, 29, 24, 0.22);
+    border-width: 1px;
+    -unity-background-scale-mode: scale-to-crop;
+}
+
+.photo-mount--empty .photo-mount__image {
+    background-color: rgba(35, 29, 24, 0.05);
+}
+
+.photo-mount__caption {
+    font-size: 12px;
+    -unity-font-style: italic;
+    color: #231D18;
+    -unity-text-align: middle-center;
+    margin-top: 6px;
+    margin-bottom: 0;
+    padding: 0;
+}
+
+.photo-mount--empty .photo-mount__caption {
+    color: rgba(35, 29, 24, 0.48);
+}
+
+/* =========================================================================
+   PAUSE, SAVE/LOAD & SETTINGS MODALS
+   ========================================================================= */
+
+.modal-cutout-rim {
+    background-color: #FFFFFF;
+    padding: 3px;
+    border-radius: 16px;
+}
+
+.parchment-modal {
+    background-color: #EBE0CB;
+    border-color: #153B56;
+    border-width: 2.5px;
+    border-radius: 13px;
+    padding: 28px;
+    color: #231D18;
+}
+
+.modal-arch-accent {
+    width: 64px;
+    height: 5px;
+    background-color: #9E533B;
+    border-radius: 3px;
+    align-self: center;
+    margin-bottom: 12px;
+}
+
+.pause-rim {
+    width: 390px;
+}
+
+.pause-modal {
+    align-items: stretch;
+}
+
+.saveload-rim {
+    width: 580px;
+    max-height: 80%;
+}
+
+.saveload-modal {
+    align-items: stretch;
+}
+
+.settings-rim {
+    width: 560px;
+}
+
+.modal-title {
+    font-size: 24px;
+    -unity-font-style: bold;
+    color: #231D18;
+    letter-spacing: 1.5px;
+    -unity-text-align: middle-center;
+    margin-bottom: 4px;
+}
+
+.modal-subtitle {
+    font-size: 13px;
+    color: #153B56;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-bottom: 14px;
+}
+
+.menu-btn {
+    height: 46px;
+    margin-top: 10px;
+    background-color: #DFD1B5;
+    border-color: #231D18;
+    border-width: 1.5px;
+    border-radius: 8px;
+    color: #231D18;
+    font-size: 15px;
+    -unity-font-style: bold;
+    letter-spacing: 0.8px;
+    transition-property: background-color, scale;
+    transition-duration: 0.1s;
+}
+
+.menu-btn:hover {
+    background-color: #D2C09C;
+    scale: 1.02;
+}
+
+.menu-btn--primary {
+    background-color: #153B56;
+    border-color: #153B56;
+    color: #F7F1E5;
+}
+
+.menu-btn--primary:hover {
+    background-color: #1E5074;
+}
+
+.menu-btn--danger {
+    border-color: #8F3D29;
+    color: #7A2E1D;
+}
+
+.menu-btn--danger:hover {
+    background-color: #E3C4B8;
+}
+
+.saveload-list {
+    max-height: 360px;
+    margin-top: 10px;
+    margin-bottom: 8px;
+}
+
+.slot-card {
+    background-color: #F5EDE0;
+    border-color: #231D18;
+    border-width: 1.5px;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+    transition-property: background-color, border-color;
+    transition-duration: 0.1s;
+}
+
+.slot-card:hover {
+    background-color: #FFFDF8;
+    border-color: #9E533B;
+}
+
+.slot-card--empty {
+    opacity: 0.55;
+}
+
+.slot-card__header {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.slot-card__title {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: #153B56;
+}
+
+.slot-card__time {
+    font-size: 12px;
+    color: rgba(35, 29, 24, 0.72);
+}
+
+.slot-card__preview {
+    font-size: 13px;
+    color: #231D18;
+    white-space: normal;
+}

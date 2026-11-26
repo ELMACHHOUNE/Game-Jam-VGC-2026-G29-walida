@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 1653322688}
   - component: {fileID: 1653322689}
   - component: {fileID: 1653322690}
+  - component: {fileID: 1653322691}
   m_Layer: 0
   m_Name: MainMenu_System
   m_TagString: Untagged
@@ -223,30 +224,32 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainMenuController
   panelRenderer: {fileID: 1653322689}
-  gameplaySceneName: Game
-  splashScreens: []
-  allowSplashSkip: 0
-  playSplashOnlyOnColdBoot: 0
-  splashCurtainFadeOut: 0.55
-  backgroundFadeDuration: 0.7
-  logoFadeDelay: 0.15
-  logoFadeDuration: 0.65
-  buttonsFadeDelay: 0.2
-  buttonsFadeDuration: 0.5
+  gameplaySceneName: MedinaMainLevel
+  sceneTransitionDuration: 0.55
   backgroundSprite: {fileID: 21300000, guid: 5a64c0dc5579bfd4aaa80502c3788d31, type: 3}
-  logoSprite: {fileID: 0}
+  logoSprite: {fileID: 21300000, guid: 28d2974e59c6a3c4d8cf4f04e204ccdf, type: 3}
+  stackTopOffsetPercent: 25.7
+  menuScale: 1
+  buttonWidth: 310
+  buttonHeight: 48
+  buttonSpacing: 11
+  buttonFontSize: 16
   logoSize: {x: 640, y: 260}
-  logoMarginTop: 95
-  logoMarginBottom: 48
-  logoMarginLeft: 0
-  logoMarginRight: 0
-  logoPaddingTop: 0
-  logoPaddingBottom: 0
-  logoPaddingLeft: 0
-  logoPaddingRight: 0
-  logoOffset: {x: 0, y: 0}
-  menuFadeOutDuration: 0.5
-  preGameStartDelay: 1
+  menuBgmEventPath: event:/BGM/MainMenu
+  hoverSfxEventPath: event:/UI/Hover
+  clickSfxEventPath: event:/UI/Click
+--- !u!114 &1653322691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1653322687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69a58783eb483c84195a82b80b8379ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VNSettingsManager
 --- !u!1 &1682252966
 GameObject:
   m_ObjectHideFlags: 0

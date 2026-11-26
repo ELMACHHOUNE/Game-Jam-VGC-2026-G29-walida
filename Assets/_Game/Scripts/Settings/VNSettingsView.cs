@@ -119,7 +119,7 @@ public sealed class VNSettingsView : IDisposable
             _voiceValueLabel.text = $"{Mathf.RoundToInt(_voiceSlider.value * 100f)}%";
 
         if (_speedSlider != null && _speedValueLabel != null)
-            _speedValueLabel.text = $"{Mathf.RoundToInt(_speedSlider.value)} cps";
+            _speedValueLabel.text = $"{Mathf.RoundToInt(_speedSlider.value)}";
     }
 
     public void Dispose()

@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="screen-fade-curtain"
+                      style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: #000000; opacity: 1;"
+                      picking-mode="Position" />
+</ui:UXML>

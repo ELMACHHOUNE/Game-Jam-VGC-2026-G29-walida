@@ -1,8 +1,10 @@
 using LitMotion;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UIElements;
+using FMODUnity;
 
 public enum StageSlot { Auto, Left, Center, Right }
 
@@ -29,27 +31,27 @@ public class VNStageView : MonoBehaviour
     [SerializeField] private Sprite pauseIconSprite;
     [SerializeField] private Sprite backlogIconSprite;
     [SerializeField] private Sprite backlogCloseArrowSprite;
+    [SerializeField] private Sprite worldPauseIconSprite;
 
     [Header("Character Registry")]
     [SerializeField] private List<VNCharacterData> characterDatabase = new();
 
     [Header("Timings")]
-    [SerializeField] private float defaultCharsPerSecond = 45f;
+    [SerializeField, Min(1f)] private float defaultCharsPerSecond = 45f;
     [SerializeField] private float bgFadeDuration = 0.45f;
     [SerializeField] private float charMoveDuration = 0.28f;
     [SerializeField] private float charFadeDuration = 0.22f;
+    [SerializeField, Min(0f)] private float ellipsisPauseDuration = 2.0f;
+    [SerializeField] private bool pauseOnUnicodeEllipsis = true;
 
     [Header("Backlog Drawer Layout & Animation")]
     [SerializeField, Range(20f, 100f)] private float backlogWidthPercent = 100f;
     [SerializeField, Range(20f, 95f)] private float backlogHeightPercent = 78f;
     [SerializeField, Min(0.05f)] private float backlogSlideDuration = 0.28f;
 
-    [Header("Typewriter Audio")]
-    [SerializeField] private AudioSource uiAudioSource;
-    [SerializeField] private AudioClip typingClickClip;
-    [SerializeField, Range(0f, 1f)] private float typingClickVolume = 0.45f;
+    [Header("Typewriter Audio (FMOD)")]
+    [SerializeField] private EventReference textBlipEvent;
     [SerializeField, Min(1)] private int charsPerClick = 2;
-    [SerializeField] private Vector2 pitchJitter = new Vector2(0.96f, 1.04f);
 
     [Header("Mode Defaults")]
     [SerializeField] private bool hideDialogueOnStart = true;
@@ -59,7 +61,6 @@ public class VNStageView : MonoBehaviour
     [SerializeField] private Sprite nameplateSprite;
     [SerializeField] private RectOffset dialogueInnerPadding;
     [SerializeField] private RectOffset nameplateInnerPadding;
-    public bool IsDialogueVisible => _boundRoot != null && _boundRoot.resolvedStyle.display != DisplayStyle.None;
 
     // Lifecycle & Input Events consumed by VNStoryController
     public event Action OnViewReady;
@@ -78,10 +79,10 @@ public class VNStageView : MonoBehaviour
     public event Action OnLogClicked;
     public event Action OnBacklogBackClicked;
 
-
-
     public bool IsReady => _boundRoot != null;
-    public bool IsTyping => _typewriter != null && _typewriter.IsTyping;
+    public bool IsDialogueVisible => _boundRoot != null && _boundRoot.resolvedStyle.display != DisplayStyle.None;
+    public bool IsTyping => _isTyping;
+    public bool IsBacklogOpen => _isBacklogOpen;
 
     // UXML Elements
     private VisualElement _boundRoot;
@@ -107,7 +108,6 @@ public class VNStageView : MonoBehaviour
     private VNSettingsView _settingsView;
     private VisualElement _backlogPanel;
     private ScrollView _backlogScroll;
-    private VisualElement _nameplateBox;
 
     private Button _btnAutoplay;
     private VisualElement _autoplayIcon;
@@ -116,14 +116,11 @@ public class VNStageView : MonoBehaviour
     private Button _btnBacklog;
 
     // Runtime State
-
     private int _audibleCharCount;
-    public bool IsBacklogOpen => _isBacklogOpen;
-    private AudioClip _fallbackClickClip;
-    private AudioClip _activeVoiceClip;
-    private float _activeBasePitch = 1f;
-    private float _activePitchVariance = 0.04f;
-    private RichTextTypewriter _typewriter;
+    private CancellationTokenSource _typingCts;
+    private string _currentFullText = string.Empty;
+    private bool _isTyping;
+
     private readonly Dictionary<string, VNCharacterData> _charDb = new();
     private readonly Dictionary<string, VisualElement> _activeSlots = new();
     private readonly Dictionary<string, StageSlot> _assignedSlots = new();
@@ -134,7 +131,6 @@ public class VNStageView : MonoBehaviour
     private readonly Dictionary<string, string> _activeExpressions = new();
     private string _activeSpeakerId = string.Empty;
 
-
     private MotionHandle _bgTween;
     private MotionHandle _cgTween;
     private MotionHandle _indicatorTween;
@@ -143,6 +139,7 @@ public class VNStageView : MonoBehaviour
     private float _currentBacklogYPercent = -100f;
     private bool _isBacklogOpen;
     private bool _isBacklogClosing;
+
     private void Awake()
     {
         foreach (var data in characterDatabase)
@@ -150,20 +147,14 @@ public class VNStageView : MonoBehaviour
             if (data != null && !string.IsNullOrEmpty(data.characterId))
                 _charDb[data.characterId.ToLowerInvariant()] = data;
         }
-
-        if (uiAudioSource == null)
-            uiAudioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
-
-        uiAudioSource.playOnAwake = false;
-
-        if (typingClickClip == null)
-            _fallbackClickClip = CreateProceduralClickClip();
     }
 
     private void OnValidate()
     {
         ApplyDialogueTextures();
+        ApplyBacklogLayout();
     }
+
     private void OnEnable()
     {
         if (panelRenderer == null)
@@ -184,20 +175,12 @@ public class VNStageView : MonoBehaviour
         if (panelRenderer != null)
             panelRenderer.UnregisterUIReloadCallback(HandleUIReload);
 
-        if (_typewriter != null)
-        {
-            _typewriter.OnCharacterRevealed -= HandleCharacterRevealed;
-            _typewriter.OnCompleted -= HandleTypingCompleted;
-            _typewriter.Dispose();
-            _typewriter = null;
-        }
-
         if (VNSettingsManager.Instance != null)
             VNSettingsManager.Instance.OnSettingsChanged -= ApplyStageSettings;
 
         _settingsView?.Dispose();
         _settingsView = null;
-
+        CancelTypingTask();
     }
 
     private void OnDestroy()
@@ -207,6 +190,7 @@ public class VNStageView : MonoBehaviour
         CancelHandle(_indicatorTween);
         CancelHandle(_autoplaySpinTween);
         CancelHandle(_backlogSlideTween);
+        CancelTypingTask();
 
         foreach (var handle in _charMoveTweens.Values) CancelHandle(handle);
         foreach (var handle in _charFadeTweens.Values) CancelHandle(handle);
@@ -216,9 +200,16 @@ public class VNStageView : MonoBehaviour
             if (obj != null) Destroy(obj);
         }
         _proceduralIcons.Clear();
+    }
 
-        if (_fallbackClickClip != null)
-            Destroy(_fallbackClickClip);
+    private void CancelTypingTask()
+    {
+        if (_typingCts != null)
+        {
+            _typingCts.Cancel();
+            _typingCts.Dispose();
+            _typingCts = null;
+        }
     }
 
     private void HandleUIReload(PanelRenderer pr, VisualElement root, int version)
@@ -235,17 +226,6 @@ public class VNStageView : MonoBehaviour
             _boundRoot = root;
             _lastBoundVersion = version;
         }
-
-        if (_typewriter != null)
-        {
-            _typewriter.OnCharacterRevealed -= HandleCharacterRevealed;
-            _typewriter.OnCompleted -= HandleTypingCompleted;
-            _typewriter.Dispose();
-        }
-
-        _typewriter = new RichTextTypewriter(_dialogueLabel);
-        _typewriter.OnCharacterRevealed += HandleCharacterRevealed;
-        _typewriter.OnCompleted += HandleTypingCompleted;
 
         OnViewReady?.Invoke();
 
@@ -297,7 +277,6 @@ public class VNStageView : MonoBehaviour
         _btnAutoplay.style.display = DisplayStyle.None;
         _btnSkip.style.display = DisplayStyle.None;
 
-
         var btnPauseSettings = root.Q<Button>("btn-pause-settings");
         if (btnPauseSettings != null)
         {
@@ -311,14 +290,6 @@ public class VNStageView : MonoBehaviour
         var btnSave = root.Q<Button>("btn-pause-save");
         var btnLoad = root.Q<Button>("btn-pause-load");
         var btnQuit = root.Q<Button>("btn-pause-quit");
-        _nameplateBox = root.Q<VisualElement>("nameplate");
-
-        var btnPauseLog = root.Q<Button>("btn-pause-log");
-        if (btnPauseLog != null)
-        {
-            btnPauseLog.focusable = false;
-            btnPauseLog.clicked += () => OnLogClicked?.Invoke();
-        }
 
         var btnBacklogClose = root.Q<Button>("btn-backlog-close");
         if (btnBacklogClose != null)
@@ -326,17 +297,20 @@ public class VNStageView : MonoBehaviour
             btnBacklogClose.focusable = false;
             btnBacklogClose.clicked += RequestCloseBacklog;
         }
+
         var backlogArrowIcon = root.Q<VisualElement>("icon-backlog-arrow");
         if (backlogArrowIcon != null)
         {
             backlogArrowIcon.style.backgroundImage = new StyleBackground(
                 backlogCloseArrowSprite != null ? backlogCloseArrowSprite : CreateUpArrowIcon());
         }
+
         _modalOverlay.RegisterCallback<PointerDownEvent>(evt =>
         {
             if (evt.button == 0 && evt.target == _modalOverlay && _isBacklogOpen)
                 RequestCloseBacklog();
         });
+
         ApplyBacklogLayout();
 
         // Prevent Space/Enter from re-triggering top icons after clicking them
@@ -344,7 +318,6 @@ public class VNStageView : MonoBehaviour
         _btnSkip.focusable = false;
         _btnBacklog.focusable = false;
         _btnPause.focusable = false;
-
 
         // Assign custom Inspector icons or generate clean procedural icons
         _autoplayIcon.style.backgroundImage = new StyleBackground(
@@ -384,38 +357,36 @@ public class VNStageView : MonoBehaviour
 
     public void PresentLine(string speakerIdOrName, string text, bool instant = false)
     {
+        CancelTypingTask();
         _audibleCharCount = 0;
-        _activeVoiceClip = typingClickClip != null ? typingClickClip : _fallbackClickClip;
-        _activeBasePitch = 1f;
-        _activePitchVariance = Mathf.Abs(pitchJitter.y - pitchJitter.x) * 0.5f;
         HideChoices();
         StopContinueIndicator();
 
         if (string.IsNullOrWhiteSpace(speakerIdOrName))
         {
             // Narration line: hide nameplate and dim all active portraits
-            _nameplate.style.display = DisplayStyle.None;
+            if (_nameplate != null)
+                _nameplate.style.display = DisplayStyle.None;
             SetActiveSpeaker(null);
         }
         else
         {
-            _nameplate.style.display = DisplayStyle.Flex;
+            if (_nameplate != null)
+                _nameplate.style.display = DisplayStyle.Flex;
+
             string lookupKey = speakerIdOrName.ToLowerInvariant();
 
             if (_charDb.TryGetValue(lookupKey, out var charData))
             {
-                if (charData.voiceBlip != null)
-                {
-                    _activeVoiceClip = charData.voiceBlip;
-                    _activeBasePitch = charData.basePitch;
-                    _activePitchVariance = charData.pitchVariance;
-                }
                 _speakerLabel.text = charData.displayName;
                 _speakerLabel.style.color = charData.nameColor;
-                _nameplate.style.borderTopColor = charData.nameColor;
-                _nameplate.style.borderBottomColor = charData.nameColor;
-                _nameplate.style.borderLeftColor = charData.nameColor;
-                _nameplate.style.borderRightColor = charData.nameColor;
+                if (_nameplate != null)
+                {
+                    _nameplate.style.borderTopColor = charData.nameColor;
+                    _nameplate.style.borderBottomColor = charData.nameColor;
+                    _nameplate.style.borderLeftColor = charData.nameColor;
+                    _nameplate.style.borderRightColor = charData.nameColor;
+                }
                 SetActiveSpeaker(lookupKey);
             }
             else
@@ -425,15 +396,132 @@ public class VNStageView : MonoBehaviour
             }
         }
 
-        if (instant)
+        _currentFullText = text ?? string.Empty;
+
+        if (_dialogueLabel == null)
+            return;
+
+        if (instant || string.IsNullOrEmpty(_currentFullText))
         {
-            _dialogueLabel.text = text;
+            _dialogueLabel.text = _currentFullText;
+            _isTyping = false;
+            HandleTypingCompleted();
+            return;
+        }
+
+        _typingCts = new CancellationTokenSource();
+        _ = TypeTextAsync(_currentFullText, _typingCts.Token);
+    }
+
+    public void CompleteTyping()
+    {
+        if (!_isTyping)
+            return;
+
+        CancelTypingTask();
+
+        if (_dialogueLabel != null)
+            _dialogueLabel.text = _currentFullText;
+
+        _isTyping = false;
+        HandleTypingCompleted();
+    }
+
+    private async Awaitable TypeTextAsync(string fullText, CancellationToken ct)
+    {
+        _isTyping = true;
+        _dialogueLabel.text = string.Empty;
+
+        int index = 0;
+        int len = fullText.Length;
+        int consecutiveDots = 0;
+        float charCarry = 0f;
+
+        try
+        {
+            while (index < len)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // Skip rich-text tags (e.g., <i>, </i>, <color=#...>) atomically
+                if (fullText[index] == '<')
+                {
+                    int closeIdx = fullText.IndexOf('>', index);
+                    if (closeIdx != -1)
+                    {
+                        index = closeIdx + 1;
+                        _dialogueLabel.text = fullText.Substring(0, index);
+                        continue;
+                    }
+                }
+
+                char c = fullText[index];
+                index++;
+                _dialogueLabel.text = fullText.Substring(0, index);
+
+                if (!char.IsWhiteSpace(c) && _audibleCharCount++ % charsPerClick == 0)
+                    PlayTypingBlip();
+
+                // Detect "..." (or single-character '…')
+                bool shouldPauseForEllipsis = false;
+                if (c == '.')
+                {
+                    consecutiveDots++;
+                    if (consecutiveDots >= 3)
+                    {
+                        consecutiveDots = 0;
+                        shouldPauseForEllipsis = true;
+                    }
+                }
+                else
+                {
+                    consecutiveDots = 0;
+                    if (pauseOnUnicodeEllipsis && c == '\u2026')
+                        shouldPauseForEllipsis = true;
+                }
+
+                if (shouldPauseForEllipsis && ellipsisPauseDuration > 0f)
+                {
+                    charCarry = 0f;
+                    await WaitScaledSecondsAsync(ellipsisPauseDuration, ct);
+                    continue;
+                }
+
+                // Standard character interval using scaled deltaTime (respects Pause Menu)
+                float cps = Mathf.Max(1f, defaultCharsPerSecond);
+                float interval = 1f / cps;
+                charCarry += interval;
+
+                while (charCarry > 0f)
+                {
+                    await Awaitable.NextFrameAsync(ct);
+                    charCarry -= Time.deltaTime;
+                }
+            }
+
+            _isTyping = false;
             HandleTypingCompleted();
         }
-        else
+        catch (OperationCanceledException)
         {
-            _typewriter.Play(text, defaultCharsPerSecond);
+            // Handled cleanly by CompleteTyping() or object teardown
         }
+    }
+
+    private static async Awaitable WaitScaledSecondsAsync(float duration, CancellationToken ct)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            await Awaitable.NextFrameAsync(ct);
+            elapsed += Time.deltaTime;
+        }
+    }
+
+    private void PlayTypingBlip()
+    {
+        if (!textBlipEvent.IsNull && RuntimeManager.IsInitialized)
+            RuntimeManager.PlayOneShot(textBlipEvent);
     }
 
     public void ApplyDialogueTextures()
@@ -454,19 +542,19 @@ public class VNStageView : MonoBehaviour
             }
         }
 
-        if (_nameplateBox != null)
+        if (_nameplate != null)
         {
             if (nameplateSprite != null)
-                _nameplateBox.style.backgroundImage = new StyleBackground(nameplateSprite);
+                _nameplate.style.backgroundImage = new StyleBackground(nameplateSprite);
 
             if (nameplateInnerPadding != null &&
                 (nameplateInnerPadding.left > 0 || nameplateInnerPadding.right > 0 ||
                  nameplateInnerPadding.top > 0 || nameplateInnerPadding.bottom > 0))
             {
-                _nameplateBox.style.paddingLeft = nameplateInnerPadding.left;
-                _nameplateBox.style.paddingRight = nameplateInnerPadding.right;
-                _nameplateBox.style.paddingTop = nameplateInnerPadding.top;
-                _nameplateBox.style.paddingBottom = nameplateInnerPadding.bottom;
+                _nameplate.style.paddingLeft = nameplateInnerPadding.left;
+                _nameplate.style.paddingRight = nameplateInnerPadding.right;
+                _nameplate.style.paddingTop = nameplateInnerPadding.top;
+                _nameplate.style.paddingBottom = nameplateInnerPadding.bottom;
             }
         }
     }
@@ -492,8 +580,6 @@ public class VNStageView : MonoBehaviour
             return inWidth && (line1 || line2 || line3);
         });
     }
-
-    public void CompleteTyping() => _typewriter?.CompleteImmediately();
 
     public void ShowChoices(IReadOnlyList<VNChoiceOption> choices)
     {
@@ -555,6 +641,12 @@ public class VNStageView : MonoBehaviour
         }
     }
 
+    public void SetSkipState(bool active)
+    {
+        if (_btnSkip == null) return;
+        _btnSkip.EnableInClassList("icon-btn--active", active);
+    }
+
     public void ShowPauseMenu(bool show)
     {
         _isBacklogOpen = false;
@@ -594,7 +686,6 @@ public class VNStageView : MonoBehaviour
     {
         if (VNSettingsManager.Instance == null) return;
         defaultCharsPerSecond = VNSettingsManager.Instance.TextSpeed;
-        typingClickVolume = VNSettingsManager.Instance.VoiceVolume;
     }
 
     public void ShowSaveLoadModal(bool isSaveMode, IReadOnlyList<VNSaveSlotSummary> slots)
@@ -720,22 +811,18 @@ public class VNStageView : MonoBehaviour
         SetActiveSpeaker(activeSpeakerId);
     }
 
-    public void SetSkipState(bool active)
-    {
-        if (_btnSkip == null) return;
-        _btnSkip.EnableInClassList("quick-btn--active", active);
-        _btnSkip.text = active ? "SKIP: ON" : "SKIP";
-    }
-
     private void HandleTypingCompleted()
     {
         CancelHandle(_indicatorTween);
-        _continueIndicator.style.opacity = 0.25f;
+        if (_continueIndicator != null)
+        {
+            _continueIndicator.style.opacity = 0.25f;
 
-        _indicatorTween = LMotion.Create(0.25f, 1f, 0.55f)
-            .WithEase(Ease.InOutSine)
-            .WithLoops(-1, LoopType.Yoyo)
-            .Bind(a => _continueIndicator.style.opacity = a);
+            _indicatorTween = LMotion.Create(0.25f, 1f, 0.55f)
+                .WithEase(Ease.InOutSine)
+                .WithLoops(-1, LoopType.Yoyo)
+                .Bind(a => _continueIndicator.style.opacity = a);
+        }
 
         OnLineTypingCompleted?.Invoke();
     }
@@ -743,7 +830,8 @@ public class VNStageView : MonoBehaviour
     private void StopContinueIndicator()
     {
         CancelHandle(_indicatorTween);
-        _continueIndicator.style.opacity = 0f;
+        if (_continueIndicator != null)
+            _continueIndicator.style.opacity = 0f;
     }
 
     // =========================================================================
@@ -858,7 +946,8 @@ public class VNStageView : MonoBehaviour
         }
 
         Sprite sprite = data.GetExpression(expression);
-        if (sprite != null) {
+        if (sprite != null)
+        {
             slot.style.backgroundImage = new StyleBackground(sprite);
             _activeExpressions[id] = expression;
         }
@@ -1051,39 +1140,9 @@ public class VNStageView : MonoBehaviour
         return sprite;
     }
 
-    private void HandleCharacterRevealed(char c)
-    {
-        if (char.IsWhiteSpace(c))
-            return;
-
-        if (_audibleCharCount++ % charsPerClick != 0)
-            return;
-
-        if (_activeVoiceClip == null || uiAudioSource == null)
-            return;
-
-        uiAudioSource.pitch = _activeBasePitch + UnityEngine.Random.Range(-_activePitchVariance, _activePitchVariance);
-        uiAudioSource.PlayOneShot(_activeVoiceClip, typingClickVolume);
-    }
-
-    private static AudioClip CreateProceduralClickClip()
-    {
-        const int sampleRate = 44100;
-        int sampleCount = (int)(sampleRate * 0.014f); // 14ms crisp mechanical tick
-        float[] samples = new float[sampleCount];
-
-        for (int i = 0; i < sampleCount; i++)
-        {
-            float t = (float)i / sampleCount;
-            float envelope = Mathf.Pow(1f - t, 4f);
-            float tone = Mathf.Sin(2f * Mathf.PI * 1150f * i / sampleRate);
-            samples[i] = tone * envelope * 0.6f;
-        }
-
-        var clip = AudioClip.Create("ProceduralTypeClick", sampleCount, 1, sampleRate, stream: false);
-        clip.SetData(samples, 0);
-        return clip;
-    }
+    // =========================================================================
+    // DIALOGUE BACKLOG DRAWER
+    // =========================================================================
 
     public void ApplyBacklogLayout()
     {
@@ -1211,5 +1270,18 @@ public class VNStageView : MonoBehaviour
             return dx <= 18f && Mathf.Abs(y - centerY) <= 2.6f;
         });
     }
-}
 
+    public void TriggerGlitch(float duration = 0.35f)
+    {
+        if (_boundRoot == null || duration <= 0f) return;
+
+        LMotion.Create(0f, 1f, duration)
+            .WithOnComplete(() => _boundRoot.style.translate = new Translate(0f, 0f))
+            .Bind(t =>
+            {
+                float decay = 1f - t;
+                float offsetX = UnityEngine.Random.Range(-18f, 18f) * decay;
+                _boundRoot.style.translate = new Translate(offsetX, 0f);
+            });
+    }
+}
