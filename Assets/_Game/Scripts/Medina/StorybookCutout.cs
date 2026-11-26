@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class StorybookCutout : MonoBehaviour
@@ -95,13 +96,40 @@ public class StorybookCutout : MonoBehaviour
 
     private void CacheRenderers()
     {
-        _renderers = GetComponentsInChildren<SpriteRenderer>(true);
+        SpriteRenderer[] all = GetComponentsInChildren<SpriteRenderer>(true);
+        List<SpriteRenderer> tracked = new List<SpriteRenderer>(all.Length);
+
+        for (int i = 0; i < all.Length; i++)
+        {
+            SpriteRenderer sr = all[i];
+            if (sr == null)
+            {
+                continue;
+            }
+
+            string lowerName = sr.gameObject.name.ToLowerInvariant();
+            if (lowerName.Contains("shadow"))
+            {
+                sr.sortingOrder = -29000;
+                continue;
+            }
+
+            if (lowerName.Contains("prompt"))
+            {
+                sr.sortingOrder = 25000;
+                continue;
+            }
+
+            tracked.Add(sr);
+        }
+
+        _renderers = tracked.ToArray();
         _baseOffsets = new int[_renderers.Length];
         int minOrder = int.MaxValue;
 
         for (int i = 0; i < _renderers.Length; i++)
         {
-            if (_renderers[i] != null && _renderers[i].sortingOrder < minOrder)
+            if (_renderers[i].sortingOrder < minOrder)
             {
                 minOrder = _renderers[i].sortingOrder;
             }
@@ -114,7 +142,8 @@ public class StorybookCutout : MonoBehaviour
 
         for (int i = 0; i < _renderers.Length; i++)
         {
-            _baseOffsets[i] = _renderers[i] != null ? _renderers[i].sortingOrder - minOrder : 0;
+            int diff = _renderers[i].sortingOrder - minOrder;
+            _baseOffsets[i] = Mathf.Clamp(diff, 0, 20);
         }
     }
 

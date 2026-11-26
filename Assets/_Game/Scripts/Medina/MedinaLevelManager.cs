@@ -136,7 +136,15 @@ public class MedinaLevelManager : MonoBehaviour
 
             case MedinaInteractableKind.CustomEvent:
                 LastTriggeredAction = $"custom:{interactable.InteractableId}";
-                Debug.Log($"[MedinaLevelManager] Triggered custom interactable '{interactable.DisplayTitle}'");
+                MedinaExitDoor exitDoor = interactable.GetComponent<MedinaExitDoor>();
+                if (exitDoor != null)
+                {
+                    exitDoor.HandleDoorInteraction(interactable);
+                }
+                else
+                {
+                    Debug.Log($"[MedinaLevelManager] Triggered custom interactable '{interactable.DisplayTitle}'");
+                }
                 break;
         }
     }
@@ -211,6 +219,16 @@ public class MedinaLevelManager : MonoBehaviour
     public void ResumeExploration()
     {
         SetExplorationActive(true);
+    }
+
+    public void UnlockMedinaExit()
+    {
+        MedinaExitDoor.SetGameCompleted(true);
+    }
+
+    public void SetGameCompleted(bool completed)
+    {
+        MedinaExitDoor.SetGameCompleted(completed);
     }
 
     public static void ClearSavedReturnPosition()
