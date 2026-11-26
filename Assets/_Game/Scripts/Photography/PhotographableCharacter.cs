@@ -13,6 +13,8 @@ public class PhotographableCharacter : MonoBehaviour
     [SerializeField] private Collider2D targetCollider;
     [SerializeField, Range(0.1f, 1f)] private float requiredCoverage = 0.5f;
     [SerializeField] private bool triggerOnce = true;
+    [Tooltip("Optional: if assigned, this target can only be photographed while its 1960s memory is revealed.")]
+    [SerializeField] private MemoryHotspot requiredMemoryHotspot;
 
     [Header("Events")]
     [SerializeField] private UnityEvent<PhotographableCharacter> onPhotographed;
@@ -26,7 +28,8 @@ public class PhotographableCharacter : MonoBehaviour
     public float RequiredCoverage => requiredCoverage;
     public bool TriggerOnce => triggerOnce;
     public bool HasBeenPhotographed => _hasBeenPhotographed;
-    public bool CanBePhotographed => !triggerOnce || !_hasBeenPhotographed;
+    public bool CanBePhotographed => (!triggerOnce || !_hasBeenPhotographed)
+        && (requiredMemoryHotspot == null || requiredMemoryHotspot.IsCurrentlyRevealed);
 
     private void Awake()
     {

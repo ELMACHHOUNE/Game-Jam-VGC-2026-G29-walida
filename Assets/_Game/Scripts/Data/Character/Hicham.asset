@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc23846cc140d94786019defbcf886f, type: 3}
+  m_Name: Hicham
+  m_EditorClassIdentifier: Assembly-CSharp::VNCharacterData
+  characterId: hicham
+  displayName: Hicham
+  nameColor: {r: 0.39, g: 0.65, b: 0.45, a: 1}
+  voiceBlip: {fileID: 0}
+  basePitch: 1.04
+  pitchVariance: 0.04
+  expressions:
+  - key: happy
+    sprite: {fileID: 21300000, guid: 0a301eb11ce104394b7a641471241ef2, type: 3}
+  - key: neutral
+    sprite: {fileID: 21300000, guid: 0a301eb11ce104394b7a641471241ef2, type: 3}
+  - key: sad
+    sprite: {fileID: 21300000, guid: fed77c892f2b24474826e7c730403b1c, type: 3}

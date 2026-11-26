@@ -13,6 +13,8 @@ public class PhoneArmStretch : MonoBehaviour
     [SerializeField] private float armThickness = 1.1f;
     [SerializeField] private float shoulderOvershoot = 2f;
 
+    private SpriteRenderer _armSpriteRenderer;
+
     private void Awake()
     {
         if (targetCamera == null)
@@ -23,6 +25,11 @@ public class PhoneArmStretch : MonoBehaviour
         if (armTransform == null)
         {
             armTransform = transform;
+        }
+
+        if (armTransform != null)
+        {
+            _armSpriteRenderer = armTransform.GetComponent<SpriteRenderer>();
         }
     }
 
@@ -60,8 +67,17 @@ public class PhoneArmStretch : MonoBehaviour
         float totalLength = distance + shoulderOvershoot;
         float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
 
+        float spriteWidth = 1f;
+        float spriteHeight = 1f;
+        if (_armSpriteRenderer != null && _armSpriteRenderer.sprite != null)
+        {
+            Vector3 spriteSize = _armSpriteRenderer.sprite.bounds.size;
+            if (spriteSize.x > 0.001f) spriteWidth = spriteSize.x;
+            if (spriteSize.y > 0.001f) spriteHeight = spriteSize.y;
+        }
+
         armTransform.position = (shoulderEnd + wristWorld) * 0.5f;
         armTransform.rotation = Quaternion.Euler(0f, 0f, angle);
-        armTransform.localScale = new Vector3(totalLength, armThickness, 1f);
+        armTransform.localScale = new Vector3(totalLength / spriteWidth, armThickness / spriteHeight, 1f);
     }
 }

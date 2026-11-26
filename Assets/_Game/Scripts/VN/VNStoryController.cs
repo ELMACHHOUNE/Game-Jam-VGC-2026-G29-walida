@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using FMODUnity;
 using Ink.Runtime;
 using LitMotion;
+using Walida.Audio;
 
 public class VNStoryController : MonoBehaviour
 {
@@ -22,6 +24,13 @@ public class VNStoryController : MonoBehaviour
         public AudioClip clip;
     }
 
+    [Serializable]
+    public struct NamedFMODEvent
+    {
+        public string id;
+        public EventReference fmodEvent;
+    }
+
     [Header("Dependencies")]
     [SerializeField] private VNStageView stageView;
     [SerializeField] private TextAsset inkJsonAsset;
@@ -35,7 +44,11 @@ public class VNStoryController : MonoBehaviour
     [SerializeField] private float choiceRevealDelay = 1.0f;
     [SerializeField] private bool cancelAutoOnManualClick = true;
 
-    [Header("Audio Registries")]
+    [Header("Audio Registries (FMOD)")]
+    [SerializeField] private List<NamedFMODEvent> fmodSfxEvents = new();
+    [SerializeField] private List<NamedFMODEvent> fmodBgmEvents = new();
+
+    [Header("Audio Registries (Legacy Fallback)")]
     [SerializeField] private List<NamedAudio> sfxClips = new();
     [SerializeField] private List<NamedAudio> bgmTracks = new();
 
@@ -57,9 +70,14 @@ public class VNStoryController : MonoBehaviour
     private readonly Dictionary<string, Sprite> _bgLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Sprite> _cgLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _visitedChoicePaths = new();
+    private readonly Dictionary<string, EventReference> _fmodSfxLookup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, EventReference> _fmodBgmLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AudioClip> _sfxLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AudioClip> _bgmLookup = new(StringComparer.OrdinalIgnoreCase);
 
+    private FMODLoopHandle _fmodBgmA;
+    private FMODLoopHandle _fmodBgmB;
+    private FMODLoopHandle _activeFmodBgm;
     private AudioSource _activeBgmSource;
     private string _currentBgmId = string.Empty;
     private MotionHandle _bgmFadeTween;
@@ -86,6 +104,19 @@ public class VNStoryController : MonoBehaviour
             if (!string.IsNullOrWhiteSpace(entry.id) && entry.sprite != null)
                 _cgLookup[entry.id.Trim()] = entry.sprite;
         }
+
+        foreach (var entry in fmodSfxEvents)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.id) && !entry.fmodEvent.IsNull)
+                _fmodSfxLookup[entry.id.Trim()] = entry.fmodEvent;
+        }
+
+        foreach (var entry in fmodBgmEvents)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.id) && !entry.fmodEvent.IsNull)
+                _fmodBgmLookup[entry.id.Trim()] = entry.fmodEvent;
+        }
+
         foreach (var entry in sfxClips)
         {
             if (!string.IsNullOrWhiteSpace(entry.id) && entry.clip != null)
@@ -96,6 +127,13 @@ public class VNStoryController : MonoBehaviour
         {
             if (!string.IsNullOrWhiteSpace(entry.id) && entry.clip != null)
                 _bgmLookup[entry.id.Trim()] = entry.clip;
+        }
+
+        if (FMODAudioManager.Instance != null)
+        {
+            _fmodBgmA = FMODAudioManager.Instance.CreateManagedLoop();
+            _fmodBgmB = FMODAudioManager.Instance.CreateManagedLoop();
+            _activeFmodBgm = _fmodBgmA;
         }
 
         if (sfxAudioSource == null)
@@ -197,6 +235,18 @@ public class VNStoryController : MonoBehaviour
     {
         if (_bgmFadeTween.IsActive())
             _bgmFadeTween.Cancel();
+
+        if (FMODAudioManager.Instance != null)
+        {
+            FMODAudioManager.Instance.UnregisterLoop(_fmodBgmA);
+            FMODAudioManager.Instance.UnregisterLoop(_fmodBgmB);
+            FMODAudioManager.Instance.SetVNBgmOverrideActive(false);
+        }
+        else
+        {
+            _fmodBgmA?.ReleaseImmediate();
+            _fmodBgmB?.ReleaseImmediate();
+        }
     }
 
     public void RegisterSFX(string id, AudioClip clip)
@@ -559,29 +609,31 @@ public class VNStoryController : MonoBehaviour
 
     public void SetPaused(bool paused)
     {
-
         if (_isPaused == paused) return;
         _isPaused = paused;
+
+        if (pauseAudioOnPauseMenu)
+        {
+            _fmodBgmA?.SetPaused(paused);
+            _fmodBgmB?.SetPaused(paused);
+            if (paused)
+            {
+                sfxAudioSource?.Pause();
+                bgmSourceA?.Pause();
+                bgmSourceB?.Pause();
+            }
+            else
+            {
+                sfxAudioSource?.UnPause();
+                bgmSourceA?.UnPause();
+                bgmSourceB?.UnPause();
+            }
+        }
 
         if (_isPaused)
         {
             CancelModeTimer();
             Time.timeScale = 0f;
-            if (pauseAudioOnPauseMenu)
-            {
-                if (paused)
-                {
-                    sfxAudioSource?.Pause();
-                    bgmSourceA?.Pause();
-                    bgmSourceB?.Pause();
-                }
-                else
-                {
-                    sfxAudioSource?.UnPause();
-                    bgmSourceA?.UnPause();
-                    bgmSourceB?.UnPause();
-                }
-            }
             stageView.ShowPauseMenu(true);
         }
         else
@@ -720,13 +772,24 @@ public class VNStoryController : MonoBehaviour
 
     public void PlaySFX(string sfxId, float volumeMultiplier = 1f)
     {
-        if (string.IsNullOrWhiteSpace(sfxId) || sfxAudioSource == null)
+        if (string.IsNullOrWhiteSpace(sfxId))
             return;
 
-        if (_sfxLookup.TryGetValue(sfxId, out AudioClip clip))
-            sfxAudioSource.PlayOneShot(clip, sfxVolume * Mathf.Clamp01(volumeMultiplier));
+        float finalVolume = sfxVolume * Mathf.Clamp01(volumeMultiplier);
+
+        if (_fmodSfxLookup.TryGetValue(sfxId.Trim(), out EventReference mappedEvent) && !mappedEvent.IsNull)
+        {
+            if (FMODAudioManager.PlayOneShot(mappedEvent, sfxId, finalVolume))
+                return;
+        }
+
+        if (FMODAudioManager.PlayOneShot(sfxId, finalVolume))
+            return;
+
+        if (sfxAudioSource != null && _sfxLookup.TryGetValue(sfxId, out AudioClip clip))
+            sfxAudioSource.PlayOneShot(clip, finalVolume);
         else
-            Debug.LogWarning($"[VNStoryController] SFX ID not found: '{sfxId}'");
+            Debug.LogWarning($"[VNStoryController] SFX ID not found in FMOD or clip registry: '{sfxId}'");
     }
 
     public void PlayBGM(string bgmId, bool instant = false)
@@ -734,23 +797,48 @@ public class VNStoryController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(bgmId))
             return;
 
+        string trimmedId = bgmId.Trim();
+
         // Avoid restarting the track if consecutive scenes share the same BGM
-        if (string.Equals(_currentBgmId, bgmId, StringComparison.OrdinalIgnoreCase) &&
-            _activeBgmSource != null && _activeBgmSource.isPlaying)
+        if (string.Equals(_currentBgmId, trimmedId, StringComparison.OrdinalIgnoreCase) &&
+            ((_activeFmodBgm != null && _activeFmodBgm.IsActive) ||
+             (_activeBgmSource != null && _activeBgmSource.isPlaying)))
         {
             return;
         }
 
-        if (!_bgmLookup.TryGetValue(bgmId, out AudioClip nextClip))
+        EnsureFmodBgmHandles();
+
+        if (_fmodBgmA != null && _fmodBgmB != null)
         {
-            Debug.LogWarning($"[VNStoryController] BGM ID not found: '{bgmId}'");
+            float fade = instant ? 0f : Mathf.Max(0f, bgmFadeDuration);
+            FMODLoopHandle outgoingFmod = _activeFmodBgm;
+            FMODLoopHandle incomingFmod = (_activeFmodBgm == _fmodBgmA) ? _fmodBgmB : _fmodBgmA;
+
+            bool startedFmod = _fmodBgmLookup.TryGetValue(trimmedId, out EventReference mappedEvent) && !mappedEvent.IsNull
+                ? incomingFmod.Start(mappedEvent, trimmedId, bgmVolume, fade, autoRestartLoop: true)
+                : incomingFmod.Start(trimmedId, bgmVolume, fade, autoRestartLoop: true);
+
+            if (startedFmod)
+            {
+                _currentBgmId = trimmedId;
+                _activeFmodBgm = incomingFmod;
+                outgoingFmod?.Stop(fade);
+                FMODAudioManager.Instance?.SetVNBgmOverrideActive(true);
+                return;
+            }
+        }
+
+        if (!_bgmLookup.TryGetValue(trimmedId, out AudioClip nextClip))
+        {
+            Debug.LogWarning($"[VNStoryController] BGM ID not found in FMOD or clip registry: '{trimmedId}'");
             return;
         }
 
         if (_bgmFadeTween.IsActive())
             _bgmFadeTween.Cancel();
 
-        _currentBgmId = bgmId;
+        _currentBgmId = trimmedId;
         AudioSource outgoing = _activeBgmSource;
         AudioSource incoming = (_activeBgmSource == bgmSourceA) ? bgmSourceB : bgmSourceA;
         _activeBgmSource = incoming;
@@ -792,6 +880,11 @@ public class VNStoryController : MonoBehaviour
             _bgmFadeTween.Cancel();
 
         _currentBgmId = string.Empty;
+        float fade = instant ? 0f : Mathf.Max(0f, bgmFadeDuration);
+
+        _fmodBgmA?.Stop(fade);
+        _fmodBgmB?.Stop(fade);
+        FMODAudioManager.Instance?.SetVNBgmOverrideActive(false);
 
         if (_activeBgmSource == null || !_activeBgmSource.isPlaying)
             return;
@@ -814,5 +907,15 @@ public class VNStoryController : MonoBehaviour
                 target.volume = 0f;
             })
             .Bind(v => target.volume = v);
+    }
+
+    private void EnsureFmodBgmHandles()
+    {
+        if (_fmodBgmA == null && FMODAudioManager.Instance != null)
+        {
+            _fmodBgmA = FMODAudioManager.Instance.CreateManagedLoop();
+            _fmodBgmB = FMODAudioManager.Instance.CreateManagedLoop();
+            _activeFmodBgm = _fmodBgmA;
+        }
     }
 }

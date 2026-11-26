@@ -168,6 +168,27 @@ public class PhonePhotoCapturer : MonoBehaviour
         return photo;
     }
 
+    public void SetPreviewTexture(Texture texture, bool showContainer = true)
+    {
+        if (previewImage != null && texture != null)
+        {
+            previewImage.texture = texture;
+        }
+
+        if (previewContainer != null && showContainer)
+        {
+            previewContainer.SetActive(true);
+        }
+    }
+
+    public void HidePreview()
+    {
+        if (previewContainer != null)
+        {
+            previewContainer.SetActive(false);
+        }
+    }
+
     private PhotographableCharacter DetectPhotographedCharacter()
     {
         PhotographableCharacter[] characters = FindObjectsByType<PhotographableCharacter>(FindObjectsInactive.Exclude);

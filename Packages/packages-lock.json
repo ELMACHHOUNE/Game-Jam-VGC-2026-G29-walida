@@ -11,6 +11,12 @@
       },
       "hash": "46158219a403758d5860bfa30f119129f7f15c85"
     },
+    "com.fmod.fmod-for-unity.v204": {
+      "version": "file:com.fmod.fmod-for-unity.v204-2.4.0.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {}
+    },
     "com.unity.2d.animation": {
       "version": "16.0.1",
       "depth": 0,

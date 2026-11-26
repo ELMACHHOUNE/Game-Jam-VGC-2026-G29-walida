@@ -1,6 +1,8 @@
 using System;
+using FMODUnity;
 using UnityEngine;
 using UnityEngine.Events;
+using Walida.Audio;
 
 [RequireComponent(typeof(AudioSource))]
 public class RecordableSoundSource : MonoBehaviour
@@ -10,7 +12,10 @@ public class RecordableSoundSource : MonoBehaviour
     [SerializeField] private string displayName = "Medina Sound";
     [SerializeField] private string dialogueKnotName = "";
 
-    [Header("Audio Components")]
+    [Header("FMOD Audio")]
+    [SerializeField] private EventReference fmodSoundEvent;
+
+    [Header("Audio Components (Legacy Fallback)")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioLowPassFilter lowPassFilter;
 
@@ -38,6 +43,7 @@ public class RecordableSoundSource : MonoBehaviour
     [SerializeField] private UnityEvent<RecordableSoundSource> onRecorded;
 
     private bool _hasBeenRecorded;
+    private FMODLoopHandle _fmodLoop;
 
     public event Action<RecordableSoundSource> OnSoundSourceRecorded;
 
@@ -81,6 +87,59 @@ public class RecordableSoundSource : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        StartFmodLoop();
+    }
+
+    private void OnDisable()
+    {
+        _fmodLoop?.Stop(0.25f);
+    }
+
+    private void OnDestroy()
+    {
+        if (FMODAudioManager.Instance != null)
+            FMODAudioManager.Instance.UnregisterLoop(_fmodLoop);
+        else
+            _fmodLoop?.ReleaseImmediate();
+    }
+
+    private void StartFmodLoop()
+    {
+        if (_fmodLoop == null && FMODAudioManager.Instance != null)
+            _fmodLoop = FMODAudioManager.Instance.CreateManagedLoop();
+
+        if (_fmodLoop == null)
+            return;
+
+        string fallbackPath = ResolveDefaultFmodEventPath();
+        _fmodLoop.Start(fmodSoundEvent, fallbackPath, backgroundNoiseVolume, fadeInSeconds: 0.4f, autoRestartLoop: true);
+    }
+
+    private string ResolveDefaultFmodEventPath()
+    {
+        string id = string.IsNullOrWhiteSpace(soundId) ? gameObject.name : soundId;
+        string lower = id.ToLowerInvariant();
+
+        if (lower.Contains("butcher") || lower.Contains("cleaver") || lower.Contains("meat"))
+            return FMODEvents.MeatCleaverWood;
+
+        if (lower.Contains("door") || lower.Contains("creak") || lower.Contains("gate"))
+            return FMODEvents.WoodenDoorCreak;
+
+        if (lower.Contains("cafe") || lower.Contains("tea") || lower.Contains("kettle") || lower.Contains("pottery") || lower.Contains("brass"))
+            return FMODEvents.TeaKettle;
+
+        if (lower.Contains("pigeon") || lower.Contains("bird") || lower.Contains("fountain") || lower.Contains("garden"))
+            return FMODEvents.Pigeons;
+
+        if (lower.Contains("merchant") || lower.Contains("vendor") || lower.Contains("souk") || lower.Contains("street"))
+            return FMODEvents.MarketVendorShouting;
+
+        return FMODEvents.Resolve(id);
+    }
+
     public float UpdateSpatialAudio(Vector3 listenerWorldPosition, float panoramaWrapWidth)
     {
         Vector3 sourcePos = transform.position;
@@ -111,12 +170,21 @@ public class RecordableSoundSource : MonoBehaviour
         float signal = 1f - Mathf.SmoothStep(0f, 1f, normalizedDist);
         CurrentSignalStrength = signal;
 
+        float targetVolume = Mathf.Lerp(backgroundNoiseVolume, focusVolume, signal);
+        float targetPan = panSpreadDistance > 0.01f
+            ? Mathf.Clamp(dx / panSpreadDistance, -1f, 1f)
+            : 0f;
+
+        if (_fmodLoop != null)
+        {
+            _fmodLoop.SetVolumeImmediate(targetVolume);
+            _fmodLoop.SetPan(targetPan);
+        }
+
         if (audioSource != null)
         {
-            audioSource.volume = Mathf.Lerp(backgroundNoiseVolume, focusVolume, signal);
-            audioSource.panStereo = panSpreadDistance > 0.01f
-                ? Mathf.Clamp(dx / panSpreadDistance, -1f, 1f)
-                : 0f;
+            audioSource.volume = targetVolume;
+            audioSource.panStereo = targetPan;
         }
 
         if (lowPassFilter != null)
@@ -154,5 +222,14 @@ public class RecordableSoundSource : MonoBehaviour
     public void ResetRecordedState()
     {
         _hasBeenRecorded = false;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(0.25f, 0.85f, 0.95f, 0.45f);
+        Gizmos.DrawWireSphere(transform.position, Mathf.Max(innerFocusRadius + 0.01f, outerFalloffRadius));
+
+        Gizmos.color = new Color(0.95f, 0.72f, 0.25f, 0.9f);
+        Gizmos.DrawWireSphere(transform.position, innerFocusRadius);
     }
 }

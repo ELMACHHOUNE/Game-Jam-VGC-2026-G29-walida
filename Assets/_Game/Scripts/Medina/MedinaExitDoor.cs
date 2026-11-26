@@ -1,5 +1,7 @@
+using FMODUnity;
 using UnityEngine;
 using UnityEngine.Events;
+using Walida.Audio;
 
 [ExecuteAlways]
 public class MedinaExitDoor : MonoBehaviour
@@ -23,6 +25,10 @@ public class MedinaExitDoor : MonoBehaviour
     [SerializeField] private Transform leftDoorPivot;
     [SerializeField] private Transform rightDoorPivot;
     [SerializeField] private BoxCollider blockingCollider;
+
+    [Header("FMOD Audio")]
+    [SerializeField] private EventReference doorCreakEvent;
+    [SerializeField, Range(0f, 1f)] private float doorAudioVolume = 0.85f;
 
     [Header("Events")]
     [SerializeField] private UnityEvent onLockedAttempt;
@@ -166,6 +172,11 @@ public class MedinaExitDoor : MonoBehaviour
             blockingCollider.enabled = false;
         }
 
+        if (Application.isPlaying)
+        {
+            FMODAudioManager.PlayOneShot(doorCreakEvent, FMODEvents.WoodenDoorCreak, doorAudioVolume);
+        }
+
         onDoorUnlocked?.Invoke();
     }
 
@@ -184,6 +195,10 @@ public class MedinaExitDoor : MonoBehaviour
         if (!_isUnlocked)
         {
             _rattleTimer = 0.35f;
+            if (Application.isPlaying)
+            {
+                FMODAudioManager.PlayOneShot(doorCreakEvent, FMODEvents.WoodenDoorCreak, doorAudioVolume * 0.7f, pitch: 0.9f);
+            }
             onLockedAttempt?.Invoke();
 
             if (!string.IsNullOrWhiteSpace(lockedDialogueKnot))

@@ -1,9 +1,11 @@
+using FMODUnity;
 using LitMotion;
 using System;
 using System.Collections.Generic;
 using UnityEditor.U2D.Animation;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Walida.Audio;
 
 public enum StageSlot { Auto, Left, Center, Right }
 
@@ -37,6 +39,12 @@ public class VNStageView : MonoBehaviour
     [SerializeField] private float bgFadeDuration = 0.45f;
     [SerializeField] private float charMoveDuration = 0.28f;
     [SerializeField] private float charFadeDuration = 0.22f;
+
+    [Header("FMOD Dialogue & UI Audio")]
+    [SerializeField] private EventReference textStartEvent;
+    [SerializeField] private EventReference menuClickEvent;
+    [SerializeField] private EventReference responseClickEvent;
+    [SerializeField, Range(0f, 1f)] private float uiClickVolume = 0.75f;
 
     [Header("Typewriter Audio")]
     [SerializeField] private AudioSource uiAudioSource;
@@ -86,6 +94,7 @@ public class VNStageView : MonoBehaviour
     // Runtime State
 
     private int _audibleCharCount;
+    private FMODLoopHandle _fmodTextLoop;
     private AudioClip _fallbackClickClip;
     private AudioClip _activeVoiceClip;
     private float _activeBasePitch = 1f;
@@ -104,6 +113,8 @@ public class VNStageView : MonoBehaviour
     private MotionHandle _cgTween;
     private MotionHandle _indicatorTween;
     private MotionHandle _autoplaySpinTween;
+    
+    //you should delegate this to a bootstrap that will handle the initialization of the scene dailogue etc
     private void Awake()
     {
         foreach (var data in characterDatabase)
@@ -119,6 +130,9 @@ public class VNStageView : MonoBehaviour
 
         if (typingClickClip == null)
             _fallbackClickClip = CreateProceduralClickClip();
+
+        if (FMODAudioManager.Instance != null)
+            _fmodTextLoop = FMODAudioManager.Instance.CreateManagedLoop();
     }
 
     private void OnEnable()
@@ -145,10 +159,16 @@ public class VNStageView : MonoBehaviour
             _typewriter = null;
         }
 
+        _fmodTextLoop?.Stop(0.08f);
     }
 
     private void OnDestroy()
     {
+        if (FMODAudioManager.Instance != null)
+            FMODAudioManager.Instance.UnregisterLoop(_fmodTextLoop);
+        else
+            _fmodTextLoop?.ReleaseImmediate();
+
         CancelHandle(_bgTween);
         CancelHandle(_cgTween);
         CancelHandle(_indicatorTween);
@@ -246,14 +266,19 @@ public class VNStageView : MonoBehaviour
             if (evt.button == 0) OnAdvanceRequested?.Invoke();
         });
 
-        _btnAutoplay.clicked += () => OnAutoClicked?.Invoke();
-        _btnSkip.clicked += () => OnSkipClicked?.Invoke();
-        _btnPause.clicked += () => OnPauseClicked?.Invoke();
+        _btnAutoplay.clicked += () => { PlayMenuClick(); OnAutoClicked?.Invoke(); };
+        _btnSkip.clicked += () => { PlayMenuClick(); OnSkipClicked?.Invoke(); };
+        _btnPause.clicked += () => { PlayMenuClick(); OnPauseClicked?.Invoke(); };
 
-        btnResume.clicked += () => OnResumeClicked?.Invoke();
-        btnSave.clicked += () => OnSaveClicked?.Invoke();
-        btnLoad.clicked += () => OnLoadClicked?.Invoke();
-        btnQuit.clicked += () => OnQuitClicked?.Invoke();
+        btnResume.clicked += () => { PlayMenuClick(); OnResumeClicked?.Invoke(); };
+        btnSave.clicked += () => { PlayMenuClick(); OnSaveClicked?.Invoke(); };
+        btnLoad.clicked += () => { PlayMenuClick(); OnLoadClicked?.Invoke(); };
+        btnQuit.clicked += () => { PlayMenuClick(); OnQuitClicked?.Invoke(); };
+    }
+
+    private void PlayMenuClick()
+    {
+        FMODAudioManager.PlayOneShot(menuClickEvent, FMODEvents.MenuClick, uiClickVolume);
     }
 
     // =========================================================================
@@ -305,16 +330,34 @@ public class VNStageView : MonoBehaviour
 
         if (instant)
         {
+            _fmodTextLoop?.Stop(0.05f);
             _dialogueLabel.text = text;
             HandleTypingCompleted();
         }
         else
         {
+            StartFmodTextLoop();
             _typewriter.Play(text, defaultCharsPerSecond);
         }
     }
 
-    public void CompleteTyping() => _typewriter?.CompleteImmediately();
+    public void CompleteTyping()
+    {
+        _fmodTextLoop?.Stop(0.05f);
+        _typewriter?.CompleteImmediately();
+    }
+
+    private void StartFmodTextLoop()
+    {
+        if (_fmodTextLoop == null && FMODAudioManager.Instance != null)
+            _fmodTextLoop = FMODAudioManager.Instance.CreateManagedLoop();
+
+        if (_fmodTextLoop == null)
+            return;
+
+        _fmodTextLoop.SetPitch(_activeBasePitch + UnityEngine.Random.Range(-_activePitchVariance, _activePitchVariance));
+        _fmodTextLoop.Start(textStartEvent, FMODEvents.TextStart, typingClickVolume, fadeInSeconds: 0.03f, autoRestartLoop: true);
+    }
 
     public void ShowChoices(IReadOnlyList<VNChoiceOption> choices)
     {
@@ -328,6 +371,7 @@ public class VNStageView : MonoBehaviour
 
             var btn = new Button(() =>
             {
+                FMODAudioManager.PlayOneShot(responseClickEvent, FMODEvents.ResponseClick, uiClickVolume);
                 HideChoices();
                 OnChoiceSelected?.Invoke(capturedIndex);
             })
@@ -391,6 +435,7 @@ public class VNStageView : MonoBehaviour
 
     private void HandleTypingCompleted()
     {
+        _fmodTextLoop?.Stop(0.08f);
         CancelHandle(_indicatorTween);
         _continueIndicator.style.opacity = 0.25f;
 

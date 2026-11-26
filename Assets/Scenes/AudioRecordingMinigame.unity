@@ -135,7 +135,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &191936000
 Transform:
   m_ObjectHideFlags: 0
@@ -227,7 +227,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &269043618
 Transform:
   m_ObjectHideFlags: 0
@@ -369,7 +369,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: eb0958f53699a4567b412e631ccfb970, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a3600001b2c34d5e9f01000000000001, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -390,12 +390,14 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.65, y: 1.65, z: 1.65}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2054829823}
   - {fileID: 1964771923}
   - {fileID: 1147720791}
+  - {fileID: 8951002}
+  - {fileID: 8952002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &346290686
@@ -414,7 +416,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &346290687
 Transform:
   m_ObjectHideFlags: 0
@@ -506,7 +508,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &405830222
 Transform:
   m_ObjectHideFlags: 0
@@ -607,7 +609,7 @@ Transform:
   m_GameObject: {fileID: 477512559}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.05, y: -2.35, z: 0}
+  m_LocalPosition: {x: 2.35, y: -4.15, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -629,7 +631,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &617936986
 Transform:
   m_ObjectHideFlags: 0
@@ -716,6 +718,7 @@ GameObject:
   - component: {fileID: 744214129}
   - component: {fileID: 744214128}
   - component: {fileID: 744214127}
+  - component: {fileID: 8920001}
   m_Layer: 0
   m_Name: AudioRecordingMinigame
   m_TagString: Untagged
@@ -762,6 +765,15 @@ MonoBehaviour:
   maxScrollSpeed: 8
   smoothTime: 0.12
   loopHorizontally: 1
+  enableVerticalScroll: 1
+  verticalEdgeZoneRatio: 0.12
+  maxVerticalScrollSpeed: 6
+  topLimitPadding: 0
+  bottomLimitPadding: 0
+  allowKeyboardScroll: 1
+  allowWheelScroll: 1
+  wheelScrollSpeed: 0.08
+  allowDragScroll: 1
 --- !u!4 &744214129
 Transform:
   m_ObjectHideFlags: 0
@@ -943,7 +955,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &800295221
 Transform:
   m_ObjectHideFlags: 0
@@ -1036,7 +1048,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &807557646
 Transform:
   m_ObjectHideFlags: 0
@@ -1067,9 +1079,9 @@ MonoBehaviour:
   targetCamera: {fileID: 750130006}
   wristAnchor: {fileID: 477512560}
   armTransform: {fileID: 807557646}
-  shoulderViewportPosition: {x: 0.82, y: -0.3}
-  armThickness: 1.1
-  shoulderOvershoot: 2
+  shoulderViewportPosition: {x: 0.88, y: -0.38}
+  armThickness: 2.35
+  shoulderOvershoot: 2.5
 --- !u!212 &807557648
 SpriteRenderer:
   serializedVersion: 3
@@ -1119,8 +1131,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 8
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: d0382d30ae0f145d9b9f03d4c9ff8fee, type: 3}
-  m_Color: {r: 0.671, g: 0.376, b: 0.282, a: 1}
+  m_Sprite: {fileID: 21300000, guid: e3000002c4d54e6fa7b8000000000002, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1141,6 +1153,7 @@ GameObject:
   - component: {fileID: 876051415}
   - component: {fileID: 876051413}
   - component: {fileID: 876051414}
+  - component: {fileID: 8945001}
   m_Layer: 0
   m_Name: PhoneRig
   m_TagString: Untagged
@@ -1220,6 +1233,7 @@ Transform:
   - {fileID: 2069451659}
   - {fileID: 477512560}
   - {fileID: 1239672994}
+  - {fileID: 8941002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &921906975
@@ -1238,7 +1252,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &921906976
 Transform:
   m_ObjectHideFlags: 0
@@ -1330,7 +1344,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1115216602
 Transform:
   m_ObjectHideFlags: 0
@@ -1435,7 +1449,7 @@ Transform:
   m_GameObject: {fileID: 1147720790}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 14, y: -0.8, z: -0.05}
+  m_LocalPosition: {x: 4.75, y: -1.15, z: -0.05}
   m_LocalScale: {x: 0.85, y: 0.85, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1453,15 +1467,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27156f9e1a18442fb80c171176938e36, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RecordableSoundSource
-  soundId: souk_street
-  displayName: Souk Rhythm
+  soundId: souk_merchants
+  displayName: Souk Merchants
   dialogueKnotName: 
   audioSource: {fileID: 1147720794}
   lowPassFilter: {fileID: 1147720793}
-  innerFocusRadius: 2
-  outerFalloffRadius: 11
-  panSpreadDistance: 8
-  backgroundNoiseVolume: 0.12
+  innerFocusRadius: 2.4
+  outerFalloffRadius: 8.0
+  panSpreadDistance: 7.5
+  backgroundNoiseVolume: 0.05
   focusVolume: 1
   backgroundLowPassCutoff: 900
   focusLowPassCutoff: 22000
@@ -1513,7 +1527,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: b19e366ea9ad24375993f373498fc7e9, type: 3}
   m_PlayOnAwake: 1
-  m_Volume: 0.12
+  m_Volume: 0.05
   m_Pitch: 1
   Loop: 1
   Mute: 0
@@ -1605,7 +1619,7 @@ SpriteRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1147720790}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 0
   m_DynamicOccludee: 1
@@ -1701,6 +1715,8 @@ Transform:
   - {fileID: 1115216602}
   - {fileID: 807557646}
   - {fileID: 2005246707}
+  - {fileID: 8940002}
+  - {fileID: 8942002}
   m_Father: {fileID: 876051415}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1271963187
@@ -1730,7 +1746,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.28, z: 0}
-  m_LocalScale: {x: 2.6, y: 4.1, z: 1}
+  m_LocalScale: {x: 1.22016, y: 1.22016, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1239672994}
@@ -1782,10 +1798,10 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 11
+  m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: d0382d30ae0f145d9b9f03d4c9ff8fee, type: 3}
-  m_Color: {r: 0.094, g: 0.216, b: 0.267, a: 1}
+  m_Sprite: {fileID: 21300000, guid: e3000003c4d54e6fa7b8000000000003, type: 3}
+  m_Color: {r: 0.055, g: 0.082, b: 0.102, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1811,7 +1827,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1362027747
 Transform:
   m_ObjectHideFlags: 0
@@ -1901,7 +1917,7 @@ GameObject:
   - component: {fileID: 1964771925}
   - component: {fileID: 1964771924}
   m_Layer: 0
-  m_Name: SoundSource_Fountain
+  m_Name: SoundSource_WoodenDoor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1916,7 +1932,7 @@ Transform:
   m_GameObject: {fileID: 1964771922}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.5, y: -1.2, z: -0.05}
+  m_LocalPosition: {x: -12.4, y: -1.05, z: -0.05}
   m_LocalScale: {x: 0.85, y: 0.85, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1934,15 +1950,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27156f9e1a18442fb80c171176938e36, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RecordableSoundSource
-  soundId: medina_fountain
-  displayName: Medina Fountain
+  soundId: wooden_door
+  displayName: Old Wooden Doorway
   dialogueKnotName: 
   audioSource: {fileID: 1964771926}
   lowPassFilter: {fileID: 1964771925}
-  innerFocusRadius: 2
-  outerFalloffRadius: 11
-  panSpreadDistance: 8
-  backgroundNoiseVolume: 0.12
+  innerFocusRadius: 2.2
+  outerFalloffRadius: 7.5
+  panSpreadDistance: 7.5
+  backgroundNoiseVolume: 0.04
   focusVolume: 1
   backgroundLowPassCutoff: 900
   focusLowPassCutoff: 22000
@@ -1994,7 +2010,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 49c2debe951984466b89ff1fb1e94755, type: 3}
   m_PlayOnAwake: 1
-  m_Volume: 0.12
+  m_Volume: 0.04
   m_Pitch: 1
   Loop: 1
   Mute: 0
@@ -2086,7 +2102,7 @@ SpriteRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1964771922}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 0
   m_DynamicOccludee: 1
@@ -2154,7 +2170,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1977476909
 Transform:
   m_ObjectHideFlags: 0
@@ -2246,7 +2262,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &2005246706
 SpriteRenderer:
   serializedVersion: 3
@@ -2338,7 +2354,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2014925358
 Transform:
   m_ObjectHideFlags: 0
@@ -2428,7 +2444,7 @@ GameObject:
   - component: {fileID: 2054829825}
   - component: {fileID: 2054829824}
   m_Layer: 0
-  m_Name: SoundSource_Cafe
+  m_Name: SoundSource_ButcherShop
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2443,7 +2459,7 @@ Transform:
   m_GameObject: {fileID: 2054829822}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -12.5, y: -0.5, z: -0.05}
+  m_LocalPosition: {x: -6.55, y: -0.85, z: -0.05}
   m_LocalScale: {x: 0.85, y: 0.85, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2461,15 +2477,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27156f9e1a18442fb80c171176938e36, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RecordableSoundSource
-  soundId: cafe_maure
-  displayName: Cafe Maure Oud
-  dialogueKnotName: ch1_apartment
+  soundId: butcher_cleaver
+  displayName: Butcher Shop
+  dialogueKnotName: 
   audioSource: {fileID: 2054829826}
   lowPassFilter: {fileID: 2054829825}
-  innerFocusRadius: 2
-  outerFalloffRadius: 11
-  panSpreadDistance: 8
-  backgroundNoiseVolume: 0.12
+  innerFocusRadius: 2.2
+  outerFalloffRadius: 7.5
+  panSpreadDistance: 7.5
+  backgroundNoiseVolume: 0.04
   focusVolume: 1
   backgroundLowPassCutoff: 900
   focusLowPassCutoff: 22000
@@ -2519,9 +2535,9 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: bbbed0d8a61054425a39212022f2eb28, type: 3}
+  m_Resource: {fileID: 8300000, guid: c5000001a1b24c3d8e9f000000000001, type: 3}
   m_PlayOnAwake: 1
-  m_Volume: 0.12
+  m_Volume: 0.04
   m_Pitch: 1
   Loop: 1
   Mute: 0
@@ -2613,7 +2629,7 @@ SpriteRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2054829822}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 0
   m_DynamicOccludee: 1
@@ -2681,7 +2697,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2064411430
 Transform:
   m_ObjectHideFlags: 0
@@ -2788,6 +2804,671 @@ Transform:
   m_Children: []
   m_Father: {fileID: 876051415}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8920001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 744214126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2000003b3c44d5e9f01000000000003, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SoukAudioSegmentController
+  audioPhoneController: {fileID: 876051414}
+  targetSoundSource: {fileID: 1147720792}
+  uiCanvas: {fileID: 0}
+  staticClipOverride: {fileID: 0}
+  maxStaticVolume: 0.24
+  minStaticVolume: 0.02
+  introDialogueLine: "Abbass: Hmm\u2026 my phone is picking up something."
+  targetLabel: Souk Merchants
+  recordedLine: "Sound recorded: Souk Merchants added to journal."
+  introSubtitleDuration: 5
+  onSoukMerchantsRecorded:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!1 &8940001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8940002}
+  - component: {fileID: 8940003}
+  m_Layer: 0
+  m_Name: PhoneAndHandsCollage
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8940002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8940001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.0244, y: -3.4537, z: 0}
+  m_LocalScale: {x: 1.22016, y: 1.22016, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1239672994}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &8940003
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8940001}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 15
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: e3000001c4d54e6fa7b8000000000001, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 8.96, y: 12}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
+--- !u!1 &8941001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8941002}
+  m_Layer: 0
+  m_Name: WristAnchorLeft
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8941002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8941001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -2.45, y: -4.15, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 876051415}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &8942001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8942002}
+  - component: {fileID: 8942003}
+  - component: {fileID: 8942004}
+  m_Layer: 0
+  m_Name: ArmCollageLeft
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &8942002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8942001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -4, y: -6, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1239672994}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &8942003
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8942001}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 8
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: e3000002c4d54e6fa7b8000000000002, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 1
+  m_DrawMode: 0
+  m_Size: {x: 12.57, y: 4.29}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
+--- !u!114 &8942004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8942001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 140da8aff66c047b09bb317f04d50ef3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhoneArmStretch
+  targetCamera: {fileID: 750130006}
+  wristAnchor: {fileID: 8941002}
+  armTransform: {fileID: 8942002}
+  shoulderViewportPosition: {x: 0.12, y: -0.38}
+  armThickness: 2.35
+  shoulderOvershoot: 2.5
+--- !u!114 &8945001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 876051412}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2000004b3c44d5e9f01000000000004, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhoneRecorderScreenUI
+  audioController: {fileID: 876051414}
+  primaryTargetSource: {fileID: 1147720792}
+  phoneVisualParent: {fileID: 1239672994}
+  screenLocalPosition: {x: 0, y: 0.28, z: -0.01}
+  screenWorldSize: {x: 1.94, y: 4.44}
+  canvasSortingOrder: 12
+  waveformBarCount: 21
+  screenBgColor: {r: 0.055, g: 0.082, b: 0.102, a: 0.98}
+  cardBgColor: {r: 0.095, g: 0.135, b: 0.165, a: 0.95}
+  chalkWhite: {r: 0.949, g: 0.929, b: 0.89, a: 1}
+  hassanSand: {r: 0.784, g: 0.643, b: 0.467, a: 1}
+  terracotta: {r: 0.78, g: 0.43, b: 0.3, a: 1}
+  lockedEmerald: {r: 0.38, g: 0.82, b: 0.56, a: 1}
+  recCrimson: {r: 0.91, g: 0.25, b: 0.25, a: 1}
+--- !u!1 &8951001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8951002}
+  - component: {fileID: 8951005}
+  - component: {fileID: 8951004}
+  - component: {fileID: 8951003}
+  m_Layer: 0
+  m_Name: SoundSource_RooftopBirds
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8951002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.35, y: 4.35, z: -0.05}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 311984198}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8951003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27156f9e1a18442fb80c171176938e36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RecordableSoundSource
+  soundId: rooftop_pigeons
+  displayName: Rooftop Pigeons
+  dialogueKnotName: 
+  audioSource: {fileID: 8951005}
+  lowPassFilter: {fileID: 8951004}
+  innerFocusRadius: 2.4
+  outerFalloffRadius: 7.8
+  panSpreadDistance: 7.5
+  backgroundNoiseVolume: 0.04
+  focusVolume: 1
+  backgroundLowPassCutoff: 900
+  focusLowPassCutoff: 22000
+  requiredSignalStrength: 0.65
+  recordDuration: 2
+  recordOnce: 1
+  indicatorRenderer: {fileID: 0}
+  idleColor: {r: 0.949, g: 0.929, b: 0.89, a: 0.45}
+  focusedColor: {r: 0.671, g: 0.376, b: 0.282, a: 0.95}
+  recordedColor: {r: 0.4, g: 0.463, b: 0.353, a: 0.85}
+  onRecorded:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!169 &8951004
+AudioLowPassFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951001}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_LowpassResonanceQ: 1
+  lowpassLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.040472943
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!82 &8951005
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951001}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: c5000003a1b24c3d8e9f000000000003, type: 3}
+  m_PlayOnAwake: 1
+  m_Volume: 0.04
+  m_Pitch: 1
+  Loop: 1
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!1 &8952001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8952002}
+  - component: {fileID: 8952005}
+  - component: {fileID: 8952004}
+  - component: {fileID: 8952003}
+  m_Layer: 0
+  m_Name: SoundSource_PotteryBrass
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8952002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8952001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 11.5, y: -0.55, z: -0.05}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 311984198}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8952003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8952001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27156f9e1a18442fb80c171176938e36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RecordableSoundSource
+  soundId: tea_kettle
+  displayName: Brass & Tea Stall
+  dialogueKnotName: 
+  audioSource: {fileID: 8952005}
+  lowPassFilter: {fileID: 8952004}
+  innerFocusRadius: 2.2
+  outerFalloffRadius: 7.5
+  panSpreadDistance: 7.5
+  backgroundNoiseVolume: 0.04
+  focusVolume: 1
+  backgroundLowPassCutoff: 900
+  focusLowPassCutoff: 22000
+  requiredSignalStrength: 0.65
+  recordDuration: 2
+  recordOnce: 1
+  indicatorRenderer: {fileID: 0}
+  idleColor: {r: 0.949, g: 0.929, b: 0.89, a: 0.45}
+  focusedColor: {r: 0.671, g: 0.376, b: 0.282, a: 0.95}
+  recordedColor: {r: 0.4, g: 0.463, b: 0.353, a: 0.85}
+  onRecorded:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!169 &8952004
+AudioLowPassFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8952001}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_LowpassResonanceQ: 1
+  lowpassLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.040472943
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!82 &8952005
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8952001}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: c5000002a1b24c3d8e9f000000000002, type: 3}
+  m_PlayOnAwake: 1
+  m_Volume: 0.04
+  m_Pitch: 1
+  Loop: 1
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
