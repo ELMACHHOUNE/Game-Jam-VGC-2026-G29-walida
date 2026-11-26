@@ -137,11 +137,11 @@ Put a `#denial:` tag at the end of the choice line. Don't add a second `[...]`: 
 
 - `#denial:1`, `#denial:+1`, `#denial:-1` and `#denial:0` all work. `0` is optional and is just a note for yourself.
 - The score is saved and loaded with the game either way.
-- Optional: declare `VAR denial = 0` once, in the root `.ink` file. The score then lives in Ink, so you can also
-  change it the plain Ink way (`~ denial += 1`) and branch on it:
+- Optional: declare `VAR denial_score = 0` once, in the root `.ink` file. The score then lives in Ink, so you can also
+  change it the plain Ink way (`~ denial_score += 1`) and branch on it:
 
 ```ink
-{ denial > 5:
+{ denial_score > 5:
     The street looks wrong. Too quiet.
 - else:
     The street is just as I remember it.

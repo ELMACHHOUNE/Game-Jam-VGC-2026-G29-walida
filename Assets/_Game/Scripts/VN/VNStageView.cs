@@ -5,6 +5,7 @@ using System.Threading;
 using UnityEngine;
 using UnityEngine.UIElements;
 using FMODUnity;
+using Walida.Audio;
 
 public enum StageSlot { Auto, Left, Center, Right }
 
@@ -51,6 +52,13 @@ public class VNStageView : MonoBehaviour
 
     [Header("Typewriter Audio (FMOD)")]
     [SerializeField] private EventReference textBlipEvent;
+
+    [Header("UI Click Audio (FMOD)")]
+    [Tooltip("Top bar and pause/save/load buttons. Falls back to FMODEvents.MenuClick when unassigned.")]
+    [SerializeField] private EventReference menuClickEvent;
+    [Tooltip("Choice buttons. Falls back to FMODEvents.ResponseClick when unassigned.")]
+    [SerializeField] private EventReference responseClickEvent;
+    [SerializeField, Range(0f, 1f)] private float uiClickVolume = 0.75f;
     [SerializeField, Min(1)] private int charsPerClick = 2;
 
     [Header("Mode Defaults")]
@@ -359,15 +367,15 @@ public class VNStageView : MonoBehaviour
             if (evt.button == 0) OnAdvanceRequested?.Invoke();
         });
 
-        _btnAutoplay.clicked += () => OnAutoClicked?.Invoke();
-        _btnSkip.clicked += () => OnSkipClicked?.Invoke();
-        _btnBacklog.clicked += () => OnLogClicked?.Invoke();
-        _btnPause.clicked += () => OnPauseClicked?.Invoke();
+        _btnAutoplay.clicked += () => { PlayMenuClick(); OnAutoClicked?.Invoke(); };
+        _btnSkip.clicked += () => { PlayMenuClick(); OnSkipClicked?.Invoke(); };
+        _btnBacklog.clicked += () => { PlayMenuClick(); OnLogClicked?.Invoke(); };
+        _btnPause.clicked += () => { PlayMenuClick(); OnPauseClicked?.Invoke(); };
 
-        btnResume.clicked += () => OnResumeClicked?.Invoke();
-        btnSave.clicked += () => OnSaveClicked?.Invoke();
-        btnLoad.clicked += () => OnLoadClicked?.Invoke();
-        btnQuit.clicked += () => OnQuitClicked?.Invoke();
+        btnResume.clicked += () => { PlayMenuClick(); OnResumeClicked?.Invoke(); };
+        btnSave.clicked += () => { PlayMenuClick(); OnSaveClicked?.Invoke(); };
+        btnLoad.clicked += () => { PlayMenuClick(); OnLoadClicked?.Invoke(); };
+        btnQuit.clicked += () => { PlayMenuClick(); OnQuitClicked?.Invoke(); };
 
         ApplyDialogueTextures();
     }
@@ -540,6 +548,12 @@ public class VNStageView : MonoBehaviour
         }
     }
 
+    private void PlayMenuClick()
+    {
+        if (Application.isPlaying)
+            FMODAudioManager.PlayOneShot(menuClickEvent, FMODEvents.MenuClick, uiClickVolume);
+    }
+
     private void PlayTypingBlip()
     {
         if (!textBlipEvent.IsNull && RuntimeManager.IsInitialized)
@@ -617,6 +631,8 @@ public class VNStageView : MonoBehaviour
 
             var btn = new Button(() =>
             {
+                if (Application.isPlaying)
+                    FMODAudioManager.PlayOneShot(responseClickEvent, FMODEvents.ResponseClick, uiClickVolume);
                 HideChoices();
                 OnChoiceSelected?.Invoke(capturedIndex);
             })

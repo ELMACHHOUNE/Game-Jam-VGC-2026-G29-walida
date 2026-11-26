@@ -43,7 +43,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5403735745658384196}
-  m_Mesh: {fileID: 4300000, guid: 1497add589f0b4e9897c7a52de24d618, type: 2}
+  m_Mesh: {fileID: 0}
 --- !u!23 &7460512856914146578
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -114,8 +114,16 @@ MonoBehaviour:
   lCutoutWidthRatio: 0.5
   lCutoutDepthRatio: 0.5
   mirrorLShape: 0
+  customFootprint: []
+  enableRoofParapet: 1
+  parapetHeight: 0.55
+  parapetThickness: 0.44
+  enableGroundShadow: 1
+  shadowProjectionPerMeter: {x: -0.55, y: 0.38}
+  shadowFeatherWidth: 1.05
   uvMode: 1
   referenceFaceSize: 4
+  maxWallSegmentLength: 10.5
   roofUV:
     serializedVersion: 2
     x: 0
@@ -151,12 +159,18 @@ MonoBehaviour:
   popUpDuration: 0.7
   enablePlayerCutaway: 1
   playerTransform: {fileID: 0}
-  maxUnwrapAngle: 88
+  maxUnwrapAngle: 84
+  maxRoofLidAngle: 110
   fadeOnUnwrap: 1
   unwrappedAlpha: 0
   cutawayMarginX: 2.5
   cutawayDepthBehind: 9
-  unwrapSmoothSpeed: 8
+  cutawayHoldDuration: 0.35
+  unwrapSmoothSpeed: 4.6
+  revealInteriorOnCutaway: 1
+  interiorTheme: 0
+  interiorMaterial: {fileID: 0}
+  furnitureMaterial: {fileID: 0}
 --- !u!65 &4585094620025984768
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -176,8 +190,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 4.5, y: 3.8, z: 3.6}
-  m_Center: {x: 0, y: 1.9, z: 0}
+  m_Size: {x: 4.2, y: 16.5, z: 4.2}
+  m_Center: {x: 0, y: 8.25, z: 0}
 --- !u!65 &6866794723395376760
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -276,7 +290,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8750469432964093968}
-  m_Mesh: {fileID: 4300000, guid: 1f3b44cad377f4c3a907d906ed7c6a9b, type: 2}
+  m_Mesh: {fileID: 0}
 --- !u!23 &2344745314258572711
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -347,8 +361,16 @@ MonoBehaviour:
   lCutoutWidthRatio: 0.5
   lCutoutDepthRatio: 0.5
   mirrorLShape: 0
+  customFootprint: []
+  enableRoofParapet: 1
+  parapetHeight: 0.55
+  parapetThickness: 0.44
+  enableGroundShadow: 1
+  shadowProjectionPerMeter: {x: -0.55, y: 0.38}
+  shadowFeatherWidth: 1.05
   uvMode: 1
   referenceFaceSize: 4
+  maxWallSegmentLength: 10.5
   roofUV:
     serializedVersion: 2
     x: 0
@@ -384,12 +406,18 @@ MonoBehaviour:
   popUpDuration: 0.7
   enablePlayerCutaway: 1
   playerTransform: {fileID: 0}
-  maxUnwrapAngle: 88
+  maxUnwrapAngle: 84
+  maxRoofLidAngle: 110
   fadeOnUnwrap: 1
   unwrappedAlpha: 0
   cutawayMarginX: 2.5
   cutawayDepthBehind: 9
-  unwrapSmoothSpeed: 8
+  cutawayHoldDuration: 0.35
+  unwrapSmoothSpeed: 4.6
+  revealInteriorOnCutaway: 1
+  interiorTheme: 0
+  interiorMaterial: {fileID: 0}
+  furnitureMaterial: {fileID: 0}
 --- !u!65 &2199598824145616096
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -409,8 +437,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 4.5, y: 3.8, z: 3.6}
-  m_Center: {x: 0, y: 1.9, z: 0}
+  m_Size: {x: 13.5, y: 7.6, z: 11.5}
+  m_Center: {x: 0, y: 3.8, z: 0}
 --- !u!65 &4580457873331091255
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -474,7 +502,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8802878745235853254}
-  m_Mesh: {fileID: 4300000, guid: 9d2a907c1c57b4ce88ea7e47c0d0c08f, type: 2}
+  m_Mesh: {fileID: 0}
 --- !u!23 &4587193819651760159
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -545,8 +573,16 @@ MonoBehaviour:
   lCutoutWidthRatio: 0.5
   lCutoutDepthRatio: 0.5
   mirrorLShape: 0
+  customFootprint: []
+  enableRoofParapet: 1
+  parapetHeight: 0.55
+  parapetThickness: 0.44
+  enableGroundShadow: 1
+  shadowProjectionPerMeter: {x: -0.55, y: 0.38}
+  shadowFeatherWidth: 1.05
   uvMode: 1
   referenceFaceSize: 4
+  maxWallSegmentLength: 10.5
   roofUV:
     serializedVersion: 2
     x: 0
@@ -582,12 +618,18 @@ MonoBehaviour:
   popUpDuration: 0.7
   enablePlayerCutaway: 1
   playerTransform: {fileID: 0}
-  maxUnwrapAngle: 88
+  maxUnwrapAngle: 84
+  maxRoofLidAngle: 110
   fadeOnUnwrap: 1
   unwrappedAlpha: 0
   cutawayMarginX: 2.5
   cutawayDepthBehind: 9
-  unwrapSmoothSpeed: 8
+  cutawayHoldDuration: 0.35
+  unwrapSmoothSpeed: 4.6
+  revealInteriorOnCutaway: 1
+  interiorTheme: 0
+  interiorMaterial: {fileID: 0}
+  furnitureMaterial: {fileID: 0}
 --- !u!65 &7250766494191965217
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -607,5 +649,5 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 4.5, y: 3.8, z: 3.6}
-  m_Center: {x: 0, y: 1.9, z: 0}
+  m_Size: {x: 2.2, y: 2.8, z: 2.2}
+  m_Center: {x: 0, y: 1.4, z: 0}

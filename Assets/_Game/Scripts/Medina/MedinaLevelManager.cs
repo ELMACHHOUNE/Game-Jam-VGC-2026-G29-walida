@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using LitMotion;
+using Walida.Audio;
 
 public class MedinaLevelManager : MonoBehaviour
 {
@@ -98,6 +99,11 @@ public class MedinaLevelManager : MonoBehaviour
 
     private void Start()
     {
+        if (FindAnyObjectByType<MedinaAmbienceController>() == null)
+        {
+            gameObject.AddComponent<MedinaAmbienceController>();
+        }
+
         if (restoreSavedPositionOnStart && _hasSavedReturnPosition && playerController != null)
         {
             playerController.TeleportTo(_savedReturnPosition);

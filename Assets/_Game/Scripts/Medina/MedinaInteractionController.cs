@@ -1,5 +1,7 @@
+using FMODUnity;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Walida.Audio;
 
 public class MedinaInteractionController : MonoBehaviour
 {
@@ -9,6 +11,11 @@ public class MedinaInteractionController : MonoBehaviour
 
     [Header("Input Settings")]
     [SerializeField] private bool allowSpaceKey = true;
+
+    [Header("FMOD Interaction Audio")]
+    [SerializeField] private EventReference interactSfxEvent;
+    [SerializeField] private EventReference minigameEnterSfxEvent;
+    [SerializeField, Range(0f, 1f)] private float interactSfxVolume = 0.75f;
 
     private MedinaInteractable[] _interactables;
     private MedinaInteractable _currentTarget;
@@ -104,6 +111,15 @@ public class MedinaInteractionController : MonoBehaviour
         }
 
         MedinaInteractable target = _currentTarget;
+        if (target.Kind == MedinaInteractableKind.PhotographyMinigame || target.Kind == MedinaInteractableKind.AudioRecordingMinigame)
+        {
+            FMODAudioManager.PlayOneShot(minigameEnterSfxEvent, FMODEvents.DetailPick, interactSfxVolume);
+        }
+        else if (target.Kind != MedinaInteractableKind.CustomEvent)
+        {
+            FMODAudioManager.PlayOneShot(interactSfxEvent, FMODEvents.ResponseClick, interactSfxVolume);
+        }
+
         target.TriggerInteraction();
 
         if (levelManager != null)

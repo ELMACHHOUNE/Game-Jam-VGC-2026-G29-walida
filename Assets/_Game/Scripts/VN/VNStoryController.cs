@@ -8,6 +8,7 @@ using UnityEngine.SceneManagement;
 using Ink.Runtime;
 using FMOD.Studio;
 using FMODUnity;
+using Walida.Audio;
 
 public class VNStoryController : MonoBehaviour
 {
@@ -41,6 +42,19 @@ public class VNStoryController : MonoBehaviour
     [SerializeField] private float choiceRevealDelay = 1.0f;
     [SerializeField] private bool cancelAutoOnManualClick = true;
 
+    [Serializable]
+    public struct NamedFMODEvent
+    {
+        public string id;
+        public EventReference fmodEvent;
+    }
+
+    [Header("Audio Registries (FMOD)")]
+    [Tooltip("Optional: short ids usable in Ink (#sfx:phone_ring) mapped to FMOD events. Full event:/ paths and FMODEvents aliases work without an entry.")]
+    [SerializeField] private List<NamedFMODEvent> fmodSfxEvents = new();
+    [Tooltip("Optional: short ids usable in Ink (#bgm:opening) mapped to FMOD events.")]
+    [SerializeField] private List<NamedFMODEvent> fmodBgmEvents = new();
+
     [Header("Audio Settings (FMOD)")]
     [SerializeField] private bool pauseAudioOnPauseMenu = true;
 
@@ -51,9 +65,9 @@ public class VNStoryController : MonoBehaviour
     [SerializeField] private bool advanceWithSpaceKey = true;
 
     [Header("Denial Score")]
-    [Tooltip("Ink global variable that holds the score (declare `VAR denial = 0` in Ink). " +
-             "#denial:N tags add to it, and `~ denial += 1` in Ink works too. If the variable isn't declared, an internal counter is used.")]
-    [SerializeField] private string denialVariableName = "denial";
+    [Tooltip("Ink global variable that holds the score (declare `VAR denial_score = 0` in Ink). " +
+             "#denial:N tags add to it, and `~ denial_score += 1` in Ink works too. If the variable isn't declared, an internal counter is used.")]
+    [SerializeField] private string denialVariableName = "denial_score";
 
     [Header("Exploration Integration")]
     [SerializeField] private bool startStoryOnBoot = false;
@@ -62,6 +76,8 @@ public class VNStoryController : MonoBehaviour
     private Story _story;
     private readonly Dictionary<string, Sprite> _bgLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Sprite> _cgLookup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, EventReference> _fmodSfxLookup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, EventReference> _fmodBgmLookup = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _visitedChoicePaths = new();
     private readonly List<VNBacklogEntry> _backlog = new();
 
@@ -215,6 +231,18 @@ public class VNStoryController : MonoBehaviour
             if (!string.IsNullOrWhiteSpace(entry.id) && entry.sprite != null)
                 _cgLookup[entry.id.Trim()] = entry.sprite;
         }
+
+        foreach (var entry in fmodSfxEvents)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.id) && !entry.fmodEvent.IsNull)
+                _fmodSfxLookup[entry.id.Trim()] = entry.fmodEvent;
+        }
+
+        foreach (var entry in fmodBgmEvents)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.id) && !entry.fmodEvent.IsNull)
+                _fmodBgmLookup[entry.id.Trim()] = entry.fmodEvent;
+        }
     }
 
     private void OnValidate()
@@ -308,6 +336,7 @@ public class VNStoryController : MonoBehaviour
         CancelStepTask();
         StopFmodInstance(ref _activeBgmInstance, immediate: true);
         StopFmodInstance(ref _activeLoopSfxInstance, immediate: true);
+        SetWorldAmbienceDucked(false);
     }
 
     private void Update()
@@ -1430,19 +1459,35 @@ public class VNStoryController : MonoBehaviour
     // FMOD STUDIO AUDIO PLAYBACK
     // =========================================================================
 
-    public void PlaySFX(string eventPath)
+    public void PlaySFX(string idOrPath)
     {
-        if (string.IsNullOrWhiteSpace(eventPath) || !RuntimeManager.IsInitialized)
+        if (string.IsNullOrWhiteSpace(idOrPath) || !RuntimeManager.IsInitialized)
             return;
 
-        try
-        {
-            RuntimeManager.PlayOneShot(eventPath);
-        }
-        catch (EventNotFoundException)
-        {
-            Debug.LogWarning($"[VNStoryController] FMOD SFX event not found: '{eventPath}'");
-        }
+        string key = idOrPath.Trim();
+        bool played = _fmodSfxLookup.TryGetValue(key, out EventReference mapped)
+            ? FMODAudioManager.PlayOneShot(mapped, key)
+            : FMODAudioManager.PlayOneShot(key);
+
+        if (!played)
+            Debug.LogWarning($"[VNStoryController] FMOD SFX not found (registry, alias or path): '{key}'");
+    }
+
+    // Registry id (Inspector EventReference) first, then FMODEvents alias / event:/ path via FMODAudioManager.
+    private static bool TryCreateVnEvent(string idOrPath, Dictionary<string, EventReference> registry, out EventInstance instance)
+    {
+        string key = idOrPath.Trim();
+        if (registry.TryGetValue(key, out EventReference mapped) && FMODAudioManager.TryCreateInstance(mapped, out instance))
+            return true;
+
+        return FMODAudioManager.TryCreateInstance(key, out instance);
+    }
+
+    // While VN music plays, the 2.5D scene ambience managed by FMODAudioManager steps aside.
+    private static void SetWorldAmbienceDucked(bool ducked)
+    {
+        if (Application.isPlaying)
+            FMODAudioManager.Instance?.SetVNBgmOverrideActive(ducked);
     }
 
     private static void SplitOptionalDuration(string payload, out string eventPath, out float durationSeconds)
@@ -1486,22 +1531,21 @@ public class VNStoryController : MonoBehaviour
         StopFmodInstance(ref _activeBgmInstance, immediate: instant);
         CancelTokenSource(ref _bgmTimerCts);
 
-        try
-        {
-            _currentBgmPath = eventPath;
-            _activeBgmInstance = RuntimeManager.CreateInstance(eventPath);
-            _activeBgmInstance.start();
-
-            if (autoStopAfterSeconds > 0f)
-            {
-                _bgmTimerCts = new CancellationTokenSource();
-                _ = AutoStopBgmAfterAsync(autoStopAfterSeconds, _bgmTimerCts.Token);
-            }
-        }
-        catch (EventNotFoundException)
+        if (!TryCreateVnEvent(eventPath, _fmodBgmLookup, out _activeBgmInstance))
         {
             _currentBgmPath = string.Empty;
-            Debug.LogWarning($"[VNStoryController] FMOD BGM event not found: '{eventPath}'");
+            Debug.LogWarning($"[VNStoryController] FMOD BGM not found (registry, alias or path): '{eventPath}'");
+            return;
+        }
+
+        _currentBgmPath = eventPath;
+        _activeBgmInstance.start();
+        SetWorldAmbienceDucked(true);
+
+        if (autoStopAfterSeconds > 0f)
+        {
+            _bgmTimerCts = new CancellationTokenSource();
+            _ = AutoStopBgmAfterAsync(autoStopAfterSeconds, _bgmTimerCts.Token);
         }
     }
 
@@ -1511,6 +1555,7 @@ public class VNStoryController : MonoBehaviour
         _currentBgmPath = string.Empty;
         _requestedBgmPath = string.Empty;
         StopFmodInstance(ref _activeBgmInstance, immediate: instant);
+        SetWorldAmbienceDucked(false);
     }
 
     public void StartLoopingSFX(string eventPath, float autoStopAfterSeconds = 0f)
@@ -1521,20 +1566,18 @@ public class VNStoryController : MonoBehaviour
         StopFmodInstance(ref _activeLoopSfxInstance, immediate: true);
         CancelTokenSource(ref _loopSfxTimerCts);
 
-        try
+        if (!TryCreateVnEvent(eventPath, _fmodSfxLookup, out _activeLoopSfxInstance))
         {
-            _activeLoopSfxInstance = RuntimeManager.CreateInstance(eventPath);
-            _activeLoopSfxInstance.start();
-
-            if (autoStopAfterSeconds > 0f)
-            {
-                _loopSfxTimerCts = new CancellationTokenSource();
-                _ = AutoStopLoopSfxAfterAsync(autoStopAfterSeconds, _loopSfxTimerCts.Token);
-            }
+            Debug.LogWarning($"[VNStoryController] FMOD looping SFX not found (registry, alias or path): '{eventPath}'");
+            return;
         }
-        catch (EventNotFoundException)
+
+        _activeLoopSfxInstance.start();
+
+        if (autoStopAfterSeconds > 0f)
         {
-            Debug.LogWarning($"[VNStoryController] FMOD looping SFX event not found: '{eventPath}'");
+            _loopSfxTimerCts = new CancellationTokenSource();
+            _ = AutoStopLoopSfxAfterAsync(autoStopAfterSeconds, _loopSfxTimerCts.Token);
         }
     }
 

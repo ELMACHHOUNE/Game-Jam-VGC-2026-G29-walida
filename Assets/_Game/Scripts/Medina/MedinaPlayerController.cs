@@ -1,5 +1,7 @@
+using FMODUnity;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Walida.Audio;
 
 [RequireComponent(typeof(CharacterController))]
 public class MedinaPlayerController : MonoBehaviour
@@ -22,6 +24,11 @@ public class MedinaPlayerController : MonoBehaviour
     [SerializeField] private float walkHopFrequency = 11f;
     [SerializeField] private float walkTiltAngle = 5f;
 
+    [Header("FMOD Footsteps")]
+    [SerializeField] private EventReference walkingEvent;
+    [SerializeField, Range(0f, 1f)] private float walkingVolume = 0.65f;
+
+    private FMODLoopHandle _walkingLoop;
     private Vector3 _velocity;
     private float _verticalVelocity;
     private float _facingSign = 1f;
@@ -74,6 +81,46 @@ public class MedinaPlayerController : MonoBehaviour
         }
 
         UpdatePaperCutoutAnimation();
+        UpdateWalkingAudio();
+    }
+
+    private void OnDisable()
+    {
+        _walkingLoop?.Stop(0.15f);
+    }
+
+    private void OnDestroy()
+    {
+        if (FMODAudioManager.Instance != null)
+            FMODAudioManager.Instance.UnregisterLoop(_walkingLoop);
+        else
+            _walkingLoop?.ReleaseImmediate();
+    }
+
+    private void UpdateWalkingAudio()
+    {
+        float planarSpeed = new Vector2(_velocity.x, _velocity.z).magnitude;
+        float speedRatio = moveSpeed > 0.01f ? Mathf.Clamp01(planarSpeed / moveSpeed) : 0f;
+        bool isWalking = IsMovementEnabled && speedRatio > 0.12f;
+
+        if (isWalking)
+        {
+            if (_walkingLoop == null && FMODAudioManager.Instance != null)
+                _walkingLoop = FMODAudioManager.Instance.CreateManagedLoop();
+
+            if (_walkingLoop != null)
+            {
+                float targetVol = walkingVolume * Mathf.Clamp01(0.35f + 0.65f * speedRatio);
+                if (!_walkingLoop.IsActive)
+                    _walkingLoop.Start(walkingEvent, FMODEvents.Walking, targetVol, fadeInSeconds: 0.12f, autoRestartLoop: true);
+                else
+                    _walkingLoop.SetVolumeImmediate(targetVol);
+            }
+        }
+        else if (_walkingLoop != null && _walkingLoop.IsActive)
+        {
+            _walkingLoop.Stop(0.18f);
+        }
     }
 
     public void TeleportTo(Vector3 worldPosition)

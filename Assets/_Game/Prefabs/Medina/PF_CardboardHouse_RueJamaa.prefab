@@ -158,13 +158,14 @@ MonoBehaviour:
   popUpDuration: 0.65
   enablePlayerCutaway: 1
   playerTransform: {fileID: 0}
-  maxUnwrapAngle: 65
+  maxUnwrapAngle: 84
+  maxRoofLidAngle: 110
   fadeOnUnwrap: 1
   unwrappedAlpha: 0
   cutawayMarginX: 2
   cutawayDepthBehind: 8.5
-  cutawayHoldDuration: 0.22
-  unwrapSmoothSpeed: 8
+  cutawayHoldDuration: 0.35
+  unwrapSmoothSpeed: 4.6
   revealInteriorOnCutaway: 1
   interiorTheme: 0
   interiorMaterial: {fileID: 2100000, guid: 3a92355359a9d4f56860e5ffbbfb9d86, type: 2}

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using FMODUnity;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Walida.Audio;
 
 public class SpatialAudioPhoneController : MonoBehaviour
 {
@@ -31,10 +33,21 @@ public class SpatialAudioPhoneController : MonoBehaviour
     [SerializeField] private string saveSubFolder = AudioRecordingStorage.DefaultFolderName;
     [SerializeField] private string filePrefix = "recording";
 
+    [Header("FMOD SFX")]
+    [SerializeField] private EventReference recorderStartBeepEvent;
+    [SerializeField] private EventReference holdTillToneEvent;
+    [SerializeField] private EventReference signalLockEvent;
+    [SerializeField] private EventReference recordingSavedEvent;
+    [SerializeField, Range(0f, 1f)] private float sfxVolume = 0.85f;
+    [SerializeField, Range(0f, 1f)] private float holdToneVolume = 0.45f;
+
     private readonly List<AudioClip> _recordedClips = new List<AudioClip>();
     private readonly List<string> _savedWavPaths = new List<string>();
     private readonly Dictionary<RecordableSoundSource, float> _clearExposureTimes = new Dictionary<RecordableSoundSource, float>();
     private RecordableSoundSource[] _cachedSources;
+    private FMODLoopHandle _holdToneLoop;
+    private bool _wasSignalLocked;
+    private float _lastSignalLockSfxTime = -10f;
     private float _elapsedRecordTime;
     private float _flashTimer;
     private bool _maxDurationStopPending;
@@ -46,6 +59,8 @@ public class SpatialAudioPhoneController : MonoBehaviour
 
     public bool IsRecordingEnabled { get; set; } = true;
     public bool IsRecording { get; private set; }
+    public float ElapsedRecordTime => _elapsedRecordTime;
+    public AudioMixCaptureTap AudioCaptureTap => audioCaptureTap;
     public float RecordingProgress => maxRecordDuration > 0.01f ? Mathf.Clamp01(_elapsedRecordTime / maxRecordDuration) : 0f;
     public float StrongestSignal { get; private set; }
     public RecordableSoundSource StrongestSource { get; private set; }
@@ -75,6 +90,14 @@ public class SpatialAudioPhoneController : MonoBehaviour
         SetRendererAlpha(screenFlashRenderer, 0f);
         UpdateProgressVisual(0f);
         RefreshSoundSources();
+
+        if (FMODAudioManager.Instance != null)
+            _holdToneLoop = FMODAudioManager.Instance.CreateManagedLoop();
+    }
+
+    private void OnDisable()
+    {
+        _holdToneLoop?.Stop(0.1f);
     }
 
     public void RefreshSoundSources()
@@ -121,6 +144,14 @@ public class SpatialAudioPhoneController : MonoBehaviour
 
         StrongestSource = strongest;
         StrongestSignal = maxSignal;
+
+        bool isSignalLocked = strongest != null && strongest.CanBeRecorded && maxSignal >= strongest.RequiredSignalStrength;
+        if (isSignalLocked && !_wasSignalLocked && Time.unscaledTime - _lastSignalLockSfxTime >= 0.75f)
+        {
+            _lastSignalLockSfxTime = Time.unscaledTime;
+            FMODAudioManager.PlayOneShot(signalLockEvent, FMODEvents.SignalLock, sfxVolume);
+        }
+        _wasSignalLocked = isSignalLocked;
     }
 
     private void UpdateRecordingInput()
@@ -187,6 +218,13 @@ public class SpatialAudioPhoneController : MonoBehaviour
         {
             audioCaptureTap.StartCapture();
         }
+
+        FMODAudioManager.PlayOneShot(recorderStartBeepEvent, FMODEvents.RecorderStartBeep, sfxVolume);
+
+        if (_holdToneLoop == null && FMODAudioManager.Instance != null)
+            _holdToneLoop = FMODAudioManager.Instance.CreateManagedLoop();
+
+        _holdToneLoop?.Start(holdTillToneEvent, FMODEvents.HoldTillTone, holdToneVolume, fadeInSeconds: 0.1f, autoRestartLoop: true);
     }
 
     public void StepActiveRecording(float deltaTime)
@@ -233,6 +271,7 @@ public class SpatialAudioPhoneController : MonoBehaviour
 
         IsRecording = false;
         _recordingStartedByInput = false;
+        _holdToneLoop?.Stop(0.12f);
         float recordedSeconds = _elapsedRecordTime;
         _elapsedRecordTime = 0f;
         UpdateProgressVisual(0f);
@@ -246,28 +285,31 @@ public class SpatialAudioPhoneController : MonoBehaviour
             samples = audioCaptureTap.StopCapture(out channels, out sampleRate);
         }
 
-        if (recordedSeconds < minRecordDuration || samples == null || samples.Length == 0)
+        if (recordedSeconds < minRecordDuration)
         {
             _clearExposureTimes.Clear();
             return null;
         }
 
-        int frameCount = samples.Length / Mathf.Max(1, channels);
         AudioClip clip = null;
-        if (frameCount > 0)
-        {
-            clip = AudioClip.Create($"Recording_{_recordedClips.Count + 1}", frameCount, channels, sampleRate, false);
-            clip.SetData(samples, 0);
-            _recordedClips.Add(clip);
-        }
-
         string savedPath = null;
-        if (saveRecordingsToDisk)
+        if (samples != null && samples.Length > 0)
         {
-            savedPath = AudioRecordingStorage.SaveWav(samples, channels, sampleRate, filePrefix, saveSubFolder);
-            if (!string.IsNullOrEmpty(savedPath))
+            int frameCount = samples.Length / Mathf.Max(1, channels);
+            if (frameCount > 0)
             {
-                _savedWavPaths.Add(savedPath);
+                clip = AudioClip.Create($"Recording_{_recordedClips.Count + 1}", frameCount, channels, sampleRate, false);
+                clip.SetData(samples, 0);
+                _recordedClips.Add(clip);
+            }
+
+            if (saveRecordingsToDisk)
+            {
+                savedPath = AudioRecordingStorage.SaveWav(samples, channels, sampleRate, filePrefix, saveSubFolder);
+                if (!string.IsNullOrEmpty(savedPath))
+                {
+                    _savedWavPaths.Add(savedPath);
+                }
             }
         }
 
@@ -280,6 +322,7 @@ public class SpatialAudioPhoneController : MonoBehaviour
 
         if (clearlyRecordedSource != null)
         {
+            FMODAudioManager.PlayOneShot(recordingSavedEvent, FMODEvents.RecordingSaved, sfxVolume);
             clearlyRecordedSource.NotifyRecorded();
             OnSoundRecorded?.Invoke(clearlyRecordedSource);
         }
@@ -316,7 +359,7 @@ public class SpatialAudioPhoneController : MonoBehaviour
         float time = Time.unscaledTime;
         float centerIndex = (meterBars.Length - 1) * 0.5f;
         float liveAudioLevel = audioCaptureTap != null ? Mathf.Clamp01(audioCaptureTap.CurrentRmsLevel * 4.5f) : 0f;
-        float energy = Mathf.Max(liveAudioLevel, StrongestSignal * 0.65f);
+        float energy = Mathf.Max(liveAudioLevel, StrongestSignal * 0.88f);
 
         for (int i = 0; i < meterBars.Length; i++)
         {
@@ -389,6 +432,11 @@ public class SpatialAudioPhoneController : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (FMODAudioManager.Instance != null)
+            FMODAudioManager.Instance.UnregisterLoop(_holdToneLoop);
+        else
+            _holdToneLoop?.ReleaseImmediate();
+
         for (int i = 0; i < _recordedClips.Count; i++)
         {
             if (_recordedClips[i] != null)

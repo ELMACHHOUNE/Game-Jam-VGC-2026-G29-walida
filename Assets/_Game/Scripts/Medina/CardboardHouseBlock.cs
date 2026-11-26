@@ -59,13 +59,14 @@ public class CardboardHouseBlock : MonoBehaviour
     [Header("Unwrap Cutaway When Player Behind")]
     [SerializeField] private bool enablePlayerCutaway = true;
     [SerializeField] private Transform playerTransform;
-    [SerializeField, Range(20f, 65f)] private float maxUnwrapAngle = 42f;
+    [SerializeField, Range(20f, 88f)] private float maxUnwrapAngle = 84f;
+    [SerializeField, Range(45f, 130f)] private float maxRoofLidAngle = 110f;
     [SerializeField] private bool fadeOnUnwrap = true;
     [SerializeField, Range(0f, 1f)] private float unwrappedAlpha = 0f;
     [SerializeField] private float cutawayMarginX = 1.4f;
     [SerializeField] private float cutawayDepthBehind = 12f;
-    [SerializeField] private float cutawayHoldDuration = 0.22f;
-    [SerializeField] private float unwrapSmoothSpeed = 9f;
+    [SerializeField] private float cutawayHoldDuration = 0.35f;
+    [SerializeField] private float unwrapSmoothSpeed = 4.6f;
 
     [Header("Cutaway Interior Floor & 3D Furniture")]
     [SerializeField] private bool revealInteriorOnCutaway = true;
@@ -141,7 +142,8 @@ public class CardboardHouseBlock : MonoBehaviour
         boxSize.x = Mathf.Max(0.4f, boxSize.x);
         boxSize.y = Mathf.Max(0.4f, boxSize.y);
         boxSize.z = Mathf.Max(0.4f, boxSize.z);
-        maxUnwrapAngle = Mathf.Clamp(maxUnwrapAngle, 20f, 65f);
+        maxUnwrapAngle = Mathf.Clamp(maxUnwrapAngle, 20f, 88f);
+        maxRoofLidAngle = Mathf.Clamp(maxRoofLidAngle, 45f, 130f);
         _needsRebuild = true;
     }
 
@@ -281,14 +283,8 @@ public class CardboardHouseBlock : MonoBehaviour
             return;
         }
 
-        if (Application.isPlaying && _currentUnwrap > 0.04f)
-        {
-            mr.sortingOrder = -28000;
-        }
-        else
-        {
-            mr.sortingOrder = -Mathf.RoundToInt(transform.position.z * 100f);
-        }
+        int baseOrder = -Mathf.RoundToInt(transform.position.z * 100f);
+        mr.sortingOrder = baseOrder;
 
         if (_shadowRenderer != null)
         {
@@ -297,12 +293,12 @@ public class CardboardHouseBlock : MonoBehaviour
 
         if (_interiorRenderer != null)
         {
-            _interiorRenderer.sortingOrder = -28600;
+            _interiorRenderer.sortingOrder = baseOrder - 2;
         }
 
         if (_furnitureRenderer != null)
         {
-            _furnitureRenderer.sortingOrder = -28300;
+            _furnitureRenderer.sortingOrder = baseOrder - 1;
         }
     }
 
@@ -639,8 +635,8 @@ public class CardboardHouseBlock : MonoBehaviour
             _opaqueMaterial = mr.sharedMaterial;
         }
 
-        bool useTransparent = Application.isPlaying && fadeOnUnwrap && unwrap > 0.005f;
-        float fadeProgress = Mathf.Clamp01(unwrap / 0.85f);
+        bool useTransparent = Application.isPlaying && fadeOnUnwrap && unwrap > 0.52f;
+        float fadeProgress = Mathf.Clamp01(Mathf.InverseLerp(0.52f, 0.96f, unwrap));
         float alpha = useTransparent
             ? Mathf.Lerp(1f, unwrappedAlpha, Mathf.SmoothStep(0f, 1f, fadeProgress))
             : 1f;
@@ -896,8 +892,9 @@ public class CardboardHouseBlock : MonoBehaviour
         _interiorMesh.RecalculateBounds();
         imf.sharedMesh = _interiorMesh;
 
+        int baseOrder = -Mathf.RoundToInt(transform.position.z * 100f);
         _interiorRenderer.sharedMaterial = GetOrCreateInteriorMaterial(interiorMaterial);
-        _interiorRenderer.sortingOrder = -28600;
+        _interiorRenderer.sortingOrder = baseOrder - 2;
         _interiorRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         _interiorRenderer.receiveShadows = false;
         _interiorRenderer.enabled = false;
@@ -941,7 +938,7 @@ public class CardboardHouseBlock : MonoBehaviour
         fmf.sharedMesh = _furnitureMesh;
 
         _furnitureRenderer.sharedMaterial = furnitureMaterial;
-        _furnitureRenderer.sortingOrder = -28300;
+        _furnitureRenderer.sortingOrder = baseOrder - 1;
         _furnitureRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         _furnitureRenderer.receiveShadows = false;
         _furnitureRenderer.enabled = false;
@@ -962,7 +959,7 @@ public class CardboardHouseBlock : MonoBehaviour
         mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
         mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
         mat.SetFloat("_ZWrite", 0f);
-        mat.SetFloat("_Cull", 0f);
+        mat.SetFloat("_Cull", 2f);
         mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         mat.SetOverrideTag("RenderType", "Transparent");
         mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
@@ -978,6 +975,7 @@ public class CardboardHouseBlock : MonoBehaviour
             return cached;
         }
 
+        float srcCull = source.HasProperty("_Cull") ? source.GetFloat("_Cull") : 2f;
         Material mat = new Material(source);
         mat.name = source.name + "_UnwrapFade";
         mat.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
@@ -986,7 +984,7 @@ public class CardboardHouseBlock : MonoBehaviour
         mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
         mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
         mat.SetFloat("_ZWrite", 0f);
-        mat.SetFloat("_Cull", 0f);
+        mat.SetFloat("_Cull", srcCull);
         mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         mat.SetOverrideTag("RenderType", "Transparent");
         mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
@@ -1116,13 +1114,16 @@ public class CardboardHouseBlock : MonoBehaviour
         float baseY = 0.03f;
 
         float smoothU = Mathf.SmoothStep(0f, 1f, unwrap);
-        float wallAngleRad = smoothU * Mathf.Clamp(maxUnwrapAngle, 20f, 65f) * Mathf.Deg2Rad;
+        float wallU = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.06f, 0.88f, unwrap));
+        float wallAngleRad = wallU * Mathf.Clamp(maxUnwrapAngle, 20f, 88f) * Mathf.Deg2Rad;
         float cosA = Mathf.Cos(wallAngleRad);
         float sinA = Mathf.Sin(wallAngleRad);
-        float paraH = enableRoofParapet ? parapetHeight * (1f - smoothU) : 0f;
-        float totalWallH = (h + paraH) * Mathf.Lerp(1f, 0.20f, smoothU);
+        float paraH = enableRoofParapet ? parapetHeight * (1f - smoothU * 0.7f) : 0f;
+        float wallLengthScale = Mathf.Lerp(1f, 0.78f, wallU);
+        float totalWallH = (h + paraH) * wallLengthScale;
         float wallTopY = baseY + totalWallH * cosA;
-        float deckY = baseY + (h * Mathf.Lerp(1f, 0.20f, smoothU)) * cosA;
+        float deckY = baseY + (h * wallLengthScale) * cosA;
+        Rect innerCardboardUV = new Rect(roofUV.xMin + roofUV.width * 0.04f, roofUV.yMin + roofUV.height * 0.04f, roofUV.width * 0.14f, roofUV.height * 0.14f);
 
         for (int i = 0; i < n; i++)
         {
@@ -1138,6 +1139,7 @@ public class CardboardHouseBlock : MonoBehaviour
             Vector2 out2D = new Vector2(edge.y / edgeLen, -edge.x / edgeLen);
             Vector3 topOffset = new Vector3(out2D.x * totalWallH * sinA, totalWallH * cosA, out2D.y * totalWallH * sinA);
             Vector3 normal = new Vector3(out2D.x * cosA, sinA, out2D.y * cosA).normalized;
+            Vector3 innerShift = -normal * 0.03f;
 
             int segments = maxWallSegmentLength > 1f
                 ? Mathf.Max(1, Mathf.RoundToInt(edgeLen / maxWallSegmentLength))
@@ -1157,13 +1159,14 @@ public class CardboardHouseBlock : MonoBehaviour
                 float aoR = s == segments - 1 ? 0.90f : 0.98f;
                 Rect uvRect = InsetRect(AdaptUVRect(SelectWallUV(out2D, i + s), segLen, h), 0.005f);
                 AddQuadAO(bl, br, tr, tl, normal, uvRect, aoL * 0.86f, aoR * 0.86f, aoR, aoL);
+                AddQuadAO(br + innerShift, bl + innerShift, tl + innerShift, tr + innerShift, -normal, innerCardboardUV, 0.72f, 0.72f, 0.80f, 0.80f);
             }
         }
 
-        BuildRoofWithParapet(poly, wallTopY, deckY, smoothU);
+        BuildRoofWithParapet(poly, baseY, h, paraH, wallLengthScale, wallAngleRad, unwrap, smoothU);
     }
 
-    private void BuildRoofWithParapet(Vector2[] poly, float wallTopY, float deckY, float smoothU)
+    private void BuildRoofWithParapet(Vector2[] poly, float baseY, float h, float paraH, float wallLengthScale, float wallAngleRad, float unwrap, float smoothU)
     {
         Vector2 centroid = Vector2.zero;
         for (int i = 0; i < poly.Length; i++)
@@ -1211,13 +1214,57 @@ public class CardboardHouseBlock : MonoBehaviour
         float spanV = Mathf.Max(0.1f, maxV - minV);
         Rect ruv = InsetRect(roofUV, 0.012f);
 
-        float roofScale = Mathf.Lerp(1f, 0.84f, smoothU);
-        float tiltRad = smoothU * 14f * Mathf.Deg2Rad;
-        float cosT = Mathf.Cos(tiltRad);
-        float sinT = Mathf.Sin(tiltRad);
-        Vector3 roofNormal = new Vector3(0f, cosT, -sinT).normalized;
+        Vector3 localNorth3 = transform.InverseTransformDirection(Vector3.forward);
+        Vector2 hingeDir = new Vector2(localNorth3.x, localNorth3.z);
+        if (hingeDir.sqrMagnitude < 0.0001f)
+        {
+            hingeDir = Vector2.up;
+        }
+        else
+        {
+            hingeDir.Normalize();
+        }
 
-        bool buildParapet = enableRoofParapet && smoothU < 0.15f && minRadius > parapetThickness * 1.8f;
+        float maxBackProj = float.MinValue;
+        for (int i = 0; i < poly.Length; i++)
+        {
+            float proj = Vector2.Dot(poly[i] - centroid, hingeDir);
+            if (proj > maxBackProj)
+            {
+                maxBackProj = proj;
+            }
+        }
+
+        float lidU = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.58f, unwrap));
+        float lidAngleRad = lidU * Mathf.Clamp(maxRoofLidAngle, 45f, 130f) * Mathf.Deg2Rad;
+        float roofScale = Mathf.Lerp(1f, 0.80f, lidU);
+        float cosW = Mathf.Cos(wallAngleRad);
+        float sinW = Mathf.Sin(wallAngleRad);
+        float totalWallH = (h + paraH) * wallLengthScale;
+        float wallTopY = baseY + totalWallH * cosW;
+        float deckY = baseY + (h * wallLengthScale) * cosW;
+
+        Vector2 hingeAnchor2D = centroid + hingeDir * (maxBackProj + totalWallH * sinW);
+        Vector3 hingePivot = new Vector3(hingeAnchor2D.x, wallTopY, hingeAnchor2D.y);
+        Vector3 hingeAxis = new Vector3(-hingeDir.y, 0f, hingeDir.x);
+        Quaternion lidRot = Quaternion.AngleAxis(-lidAngleRad * Mathf.Rad2Deg, hingeAxis);
+        Vector3 roofNormal = (lidRot * Vector3.up).normalized;
+        Vector3 underShift = -roofNormal * 0.03f;
+
+        Vector3 TransformRoofPoint(Vector2 pt2D, float localY)
+        {
+            Vector2 relFromHinge = (pt2D - (centroid + hingeDir * maxBackProj)) * roofScale;
+            Vector3 unrotated = new Vector3(relFromHinge.x, localY - wallTopY, relFromHinge.y);
+            Vector3 rotated = hingePivot + lidRot * unrotated;
+            if (rotated.y < 0.05f)
+            {
+                rotated.y = 0.05f;
+            }
+
+            return rotated;
+        }
+
+        bool buildParapet = enableRoofParapet && minRadius > parapetThickness * 1.8f;
 
         if (!buildParapet)
         {
@@ -1225,12 +1272,7 @@ public class CardboardHouseBlock : MonoBehaviour
             for (int i = 0; i < poly.Length; i++)
             {
                 Vector2 rel = poly[i] - centroid;
-                Vector2 scaled = centroid + rel * roofScale;
-                float dz = rel.y * roofScale;
-                float ry = Mathf.Max(0.05f, deckY - dz * sinT);
-                float rz = centroid.y + dz * cosT;
-
-                _verts.Add(new Vector3(scaled.x, ry, rz));
+                _verts.Add(TransformRoofPoint(poly[i], deckY));
                 _norms.Add(roofNormal);
                 _colors.Add(Color.white);
 
@@ -1240,6 +1282,22 @@ public class CardboardHouseBlock : MonoBehaviour
             }
 
             TriangulatePolygonRoof(poly, baseIndex);
+
+            int underBase = _verts.Count;
+            Rect underUV = new Rect(roofUV.xMin + roofUV.width * 0.04f, roofUV.yMin + roofUV.height * 0.04f, roofUV.width * 0.14f, roofUV.height * 0.14f);
+            for (int i = 0; i < poly.Length; i++)
+            {
+                Vector2 rel = poly[i] - centroid;
+                _verts.Add(TransformRoofPoint(poly[i], deckY) + underShift);
+                _norms.Add(-roofNormal);
+                _colors.Add(new Color(0.74f, 0.74f, 0.74f, 1f));
+
+                float u = Mathf.Clamp01((Vector2.Dot(rel, axisU) - minU) / spanU);
+                float v = Mathf.Clamp01((Vector2.Dot(rel, axisV) - minV) / spanV);
+                _uvs.Add(new Vector2(Mathf.Lerp(underUV.xMin, underUV.xMax, u), Mathf.Lerp(underUV.yMin, underUV.yMax, v)));
+            }
+
+            TriangulatePolygonRoofFlipped(poly, underBase);
             return;
         }
 
@@ -1255,32 +1313,26 @@ public class CardboardHouseBlock : MonoBehaviour
         for (int i = 0; i < n; i++)
         {
             int next = (i + 1) % n;
-            Vector2 oa = poly[i];
-            Vector2 ob = poly[next];
-            Vector2 ia = innerPoly[i];
-            Vector2 ib = innerPoly[next];
+            Vector3 topOA = TransformRoofPoint(poly[i], wallTopY);
+            Vector3 topOB = TransformRoofPoint(poly[next], wallTopY);
+            Vector3 topIA = TransformRoofPoint(innerPoly[i], wallTopY);
+            Vector3 topIB = TransformRoofPoint(innerPoly[next], wallTopY);
+            AddQuadAO(topOA, topOB, topIB, topIA, roofNormal, rimUV, 1.0f, 1.0f, 0.94f, 0.94f);
 
-            Vector3 topOA = new Vector3(oa.x, wallTopY, oa.y);
-            Vector3 topOB = new Vector3(ob.x, wallTopY, ob.y);
-            Vector3 topIA = new Vector3(ia.x, wallTopY, ia.y);
-            Vector3 topIB = new Vector3(ib.x, wallTopY, ib.y);
-            AddQuadAO(topOA, topOB, topIB, topIA, Vector3.up, rimUV, 1.0f, 1.0f, 0.94f, 0.94f);
-
-            Vector2 inEdge = ib - ia;
+            Vector2 inEdge = innerPoly[next] - innerPoly[i];
             float inLen = Mathf.Max(0.001f, inEdge.magnitude);
-            Vector3 inNorm = new Vector3(-inEdge.y / inLen, 0f, inEdge.x / inLen);
-            Vector3 botIA = new Vector3(ia.x, deckY, ia.y);
-            Vector3 botIB = new Vector3(ib.x, deckY, ib.y);
+            Vector3 inNorm = (lidRot * new Vector3(-inEdge.y / inLen, 0f, inEdge.x / inLen)).normalized;
+            Vector3 botIA = TransformRoofPoint(innerPoly[i], deckY);
+            Vector3 botIB = TransformRoofPoint(innerPoly[next], deckY);
             AddQuadAO(botIB, botIA, topIA, topIB, inNorm, rimUV, 0.68f, 0.68f, 0.94f, 0.94f);
         }
 
         int deckBase = _verts.Count;
         for (int i = 0; i < n; i++)
         {
-            Vector2 p = innerPoly[i];
-            Vector2 rel = p - centroid;
-            _verts.Add(new Vector3(p.x, deckY, p.y));
-            _norms.Add(Vector3.up);
+            Vector2 rel = innerPoly[i] - centroid;
+            _verts.Add(TransformRoofPoint(innerPoly[i], deckY));
+            _norms.Add(roofNormal);
             _colors.Add(new Color(0.84f, 0.84f, 0.84f, 1f));
 
             float u = Mathf.Clamp01((Vector2.Dot(rel, axisU) - minU) / spanU);
@@ -1289,6 +1341,34 @@ public class CardboardHouseBlock : MonoBehaviour
         }
 
         TriangulatePolygonRoof(innerPoly, deckBase);
+
+        int underDeckBase = _verts.Count;
+        Rect underDeckUV = new Rect(roofUV.xMin + roofUV.width * 0.04f, roofUV.yMin + roofUV.height * 0.04f, roofUV.width * 0.14f, roofUV.height * 0.14f);
+        for (int i = 0; i < n; i++)
+        {
+            Vector2 rel = poly[i] - centroid;
+            _verts.Add(TransformRoofPoint(poly[i], deckY) + underShift);
+            _norms.Add(-roofNormal);
+            _colors.Add(new Color(0.74f, 0.74f, 0.74f, 1f));
+
+            float u = Mathf.Clamp01((Vector2.Dot(rel, axisU) - minU) / spanU);
+            float v = Mathf.Clamp01((Vector2.Dot(rel, axisV) - minV) / spanV);
+            _uvs.Add(new Vector2(Mathf.Lerp(underDeckUV.xMin, underDeckUV.xMax, u), Mathf.Lerp(underDeckUV.yMin, underDeckUV.yMax, v)));
+        }
+
+        TriangulatePolygonRoofFlipped(poly, underDeckBase);
+    }
+
+    private void TriangulatePolygonRoofFlipped(Vector2[] poly, int baseIndex)
+    {
+        int startTri = _tris.Count;
+        TriangulatePolygonRoof(poly, baseIndex);
+        for (int i = startTri; i + 2 < _tris.Count; i += 3)
+        {
+            int tmp = _tris[i + 1];
+            _tris[i + 1] = _tris[i + 2];
+            _tris[i + 2] = tmp;
+        }
     }
 
     private void TriangulatePolygonRoof(Vector2[] poly, int baseIndex)
@@ -1512,6 +1592,8 @@ public class CardboardHouseBlock : MonoBehaviour
         Vector3 camPos = cam.transform.position;
         Vector3 playerMid = playerPos + Vector3.up * 1.15f;
         Vector3 playerLow = playerPos + Vector3.up * 0.45f;
+        Vector3 playerHigh = playerPos + Vector3.up * 1.85f;
+        float marginX = IsCutawayActive ? cutawayMarginX + 0.55f : cutawayMarginX;
 
         if (RayHitsCollider(col, camPos, playerMid))
         {
@@ -1523,12 +1605,17 @@ public class CardboardHouseBlock : MonoBehaviour
             return true;
         }
 
-        if (RayHitsCollider(col, camPos, playerMid + Vector3.right * cutawayMarginX))
+        if (RayHitsCollider(col, camPos, playerHigh))
         {
             return true;
         }
 
-        if (RayHitsCollider(col, camPos, playerMid - Vector3.right * cutawayMarginX))
+        if (RayHitsCollider(col, camPos, playerMid + Vector3.right * marginX))
+        {
+            return true;
+        }
+
+        if (RayHitsCollider(col, camPos, playerMid - Vector3.right * marginX))
         {
             return true;
         }

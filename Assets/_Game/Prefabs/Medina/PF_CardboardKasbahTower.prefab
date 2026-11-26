@@ -42,7 +42,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 378673354481361344}
-  m_Mesh: {fileID: 4300000, guid: edca2ad1a155343888bacaf0047f6d7b, type: 2}
+  m_Mesh: {fileID: 0}
 --- !u!23 &2915611701781335359
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -158,13 +158,14 @@ MonoBehaviour:
   popUpDuration: 0.65
   enablePlayerCutaway: 1
   playerTransform: {fileID: 0}
-  maxUnwrapAngle: 65
+  maxUnwrapAngle: 84
+  maxRoofLidAngle: 110
   fadeOnUnwrap: 1
   unwrappedAlpha: 0
   cutawayMarginX: 2
   cutawayDepthBehind: 8.5
-  cutawayHoldDuration: 0.22
-  unwrapSmoothSpeed: 8
+  cutawayHoldDuration: 0.35
+  unwrapSmoothSpeed: 4.6
   revealInteriorOnCutaway: 1
   interiorTheme: 7
   interiorMaterial: {fileID: 2100000, guid: 32ac58813b1fa468a82f56f085f93580, type: 2}
