@@ -235,9 +235,9 @@ MonoBehaviour:
   buttonSpacing: 11
   buttonFontSize: 16
   logoSize: {x: 640, y: 260}
-  menuBgmEventPath: event:/BGM/MainMenu
-  hoverSfxEventPath: event:/UI/Hover
-  clickSfxEventPath: event:/UI/Click
+  menuBgmEventPath: 
+  hoverSfxEventPath: 
+  clickSfxEventPath: 
 --- !u!114 &1653322691
 MonoBehaviour:
   m_ObjectHideFlags: 0

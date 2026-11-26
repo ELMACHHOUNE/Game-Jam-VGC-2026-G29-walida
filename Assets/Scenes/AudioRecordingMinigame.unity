@@ -3082,13 +3082,13 @@ MonoBehaviour:
   screenWorldSize: {x: 1.94, y: 4.44}
   canvasSortingOrder: 12
   waveformBarCount: 21
-  screenBgColor: {r: 0.055, g: 0.082, b: 0.102, a: 0.98}
-  cardBgColor: {r: 0.095, g: 0.135, b: 0.165, a: 0.95}
+  screenBgColor: {r: 0.094, g: 0.216, b: 0.267, a: 0.98}
+  cardBgColor: {r: 0.122, g: 0.29, b: 0.369, a: 0.95}
   chalkWhite: {r: 0.949, g: 0.929, b: 0.89, a: 1}
   hassanSand: {r: 0.784, g: 0.643, b: 0.467, a: 1}
-  terracotta: {r: 0.78, g: 0.43, b: 0.3, a: 1}
-  lockedEmerald: {r: 0.38, g: 0.82, b: 0.56, a: 1}
-  recCrimson: {r: 0.91, g: 0.25, b: 0.25, a: 1}
+  terracotta: {r: 0.671, g: 0.376, b: 0.282, a: 1}
+  lockedEmerald: {r: 0.639, g: 0.706, b: 0.525, a: 1}
+  recCrimson: {r: 0.761, g: 0.333, b: 0.235, a: 1}
 --- !u!1 &8951001
 GameObject:
   m_ObjectHideFlags: 0

@@ -89,22 +89,14 @@ public class VNSaveManager : MonoBehaviour
         Instance = null;
     }
 
-    // Not placed in any scene: create one persistent instance before the first scene loads
-    // so the main menu, the HUD and the VN all share it.
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-    private static void Bootstrap()
-    {
-        if (Instance != null) return;
-
-        var go = new GameObject(nameof(VNSaveManager));
-        go.AddComponent<VNSaveManager>();
-    }
+    // The persistent instance is created by VNBootstrapper (on [VN_GlobalServices]) before the first scene loads.
 
     private void Awake()
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(gameObject);
+            // Remove only this duplicate component, never a GameObject other services may share.
+            Destroy(this);
             return;
         }
 

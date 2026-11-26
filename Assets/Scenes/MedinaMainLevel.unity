@@ -14443,6 +14443,21 @@ MonoBehaviour:
   playerTransform: {fileID: 1054223278}
   levelManager: {fileID: 284462047}
   allowSpaceKey: 1
+  interactSfxEvent:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  minigameEnterSfxEvent:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  interactSfxVolume: 0.75
 --- !u!114 &1054223280
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14467,6 +14482,14 @@ MonoBehaviour:
   walkHopHeight: 0.14
   walkHopFrequency: 11
   walkTiltAngle: 5
+  walkingEvent:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  walkingVolume: 0.65
 --- !u!143 &1054223281
 CharacterController:
   m_ObjectHideFlags: 0
@@ -19172,7 +19195,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 309074b5dbee74027bc10a29db552825, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MedinaInteractable
-  interactableId: lalla_khadija
+  interactableId: khadija
   displayTitle: Lalla Khadija (Neighborhood)
   kind: 0
   targetSceneName: 

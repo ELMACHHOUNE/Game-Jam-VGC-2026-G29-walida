@@ -27,16 +27,31 @@ public class VNSettingsManager : MonoBehaviour
     public float VoiceVolume { get; private set; } = DefaultVoiceVolume;
     public float TextSpeed { get; private set; } = DefaultTextSpeed;
 
+    // Statics survive play sessions when domain reload is disabled (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        Instance = null;
+    }
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(gameObject);
+            // Remove only this duplicate component. Destroying the GameObject would also take out
+            // whatever shares it (e.g. MainMenu_System holds the menu controller and its PanelRenderer).
+            Destroy(this);
             return;
         }
 
         Instance = this;
         LoadFromPrefs();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     private void Start()

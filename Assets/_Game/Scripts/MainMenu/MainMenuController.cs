@@ -52,6 +52,7 @@ public class MainMenuController : MonoBehaviour
     private Button _btnLoad;
     private Button _btnSettings;
     private Button _btnExit;
+    private Button _btnLoadBack;
 
     private VisualElement _modalOverlay;
     private VisualElement _loadPanel;
@@ -64,9 +65,27 @@ public class MainMenuController : MonoBehaviour
     private EventInstance _bgmInstance;
     private bool _isTransitioning;
 
+    private readonly CompositeMotionHandle _entranceMotions = new();
+    private MotionHandle _transitionMotion;
+
+    private EventCallback<PointerEnterEvent> _onButtonHover;
+    private EventCallback<PointerDownEvent> _onOverlayPointerDown;
+
+    private void Awake()
+    {
+        _onButtonHover = _ => PlayOneShotSafe(hoverSfxEventPath);
+        _onOverlayPointerDown = evt =>
+        {
+            if (evt.button == 0 && evt.target == _modalOverlay)
+                CloseModals();
+        };
+    }
+
     private void OnValidate()
     {
-        ApplyMenuSizing();
+        // Live Inspector tweaking only applies to the running UI
+        if (Application.isPlaying)
+            ApplyMenuSizing();
     }
 
     private void OnEnable()
@@ -93,14 +112,13 @@ public class MainMenuController : MonoBehaviour
         if (panelRenderer != null)
             panelRenderer.UnregisterUIReloadCallback(HandleUIReload);
 
-        _settingsView?.Dispose();
-        _settingsView = null;
+        UnbindElements();
         StopMenuBgm(immediate: true);
     }
 
     private void Update()
     {
-        if (_boundRoot == null || _isTransitioning || Keyboard.current == null)
+        if (_boundRoot == null || _boundRoot.panel == null || _isTransitioning || Keyboard.current == null)
             return;
 
         if (Keyboard.current.escapeKey.wasPressedThisFrame &&
@@ -113,13 +131,19 @@ public class MainMenuController : MonoBehaviour
 
     private void HandleUIReload(PanelRenderer pr, VisualElement root, int version)
     {
-        if (root == null) return;
+        if (root == null)
+        {
+            UnbindElements();
+            return;
+        }
 
         if (_boundRoot != root || _lastBoundVersion != version)
         {
-            BindElements(root);
+            UnbindElements();
+            // Set before binding: BindElements -> ApplyMenuSizing needs to see the bound root.
             _boundRoot = root;
             _lastBoundVersion = version;
+            BindElements(root);
         }
     }
 
@@ -129,16 +153,13 @@ public class MainMenuController : MonoBehaviour
         _centerColumn = root.Q<VisualElement>("menu-center-column");
         _logoElement = root.Q<VisualElement>("menu-logo");
 
-        _buttonRims.Clear();
-        _buttons.Clear();
-        _buttonLabels.Clear();
-
         _continueRim = root.Q<VisualElement>("rim-continue");
         _btnContinue = root.Q<Button>("btn-menu-continue");
         _btnNewGame = root.Q<Button>("btn-menu-newgame");
         _btnLoad = root.Q<Button>("btn-menu-load");
         _btnSettings = root.Q<Button>("btn-menu-settings");
         _btnExit = root.Q<Button>("btn-menu-exit");
+        _btnLoadBack = root.Q<Button>("btn-menu-load-back");
 
         _buttonRims.AddRange(root.Query<VisualElement>(className: "menu-cutout-rim").ToList());
         _buttons.AddRange(root.Query<Button>(className: "menu-btn").ToList());
@@ -151,36 +172,89 @@ public class MainMenuController : MonoBehaviour
         _settingsContent = root.Q<VisualElement>("menu-settings-content");
         _fadeCurtain = root.Q<VisualElement>("menu-fade-curtain");
 
-        _settingsView?.Dispose();
-        _settingsView = new VNSettingsView(_settingsContent ?? _settingsPanel, CloseModals);
+        VisualElement settingsHost = _settingsContent ?? _settingsPanel;
+        if (settingsHost != null)
+            _settingsView = new VNSettingsView(settingsHost, CloseModals);
 
         foreach (Button btn in _buttons)
         {
+            if (btn == null) continue;
             btn.focusable = false;
-            btn.RegisterCallback<PointerEnterEvent>(_ => PlayOneShotSafe(hoverSfxEventPath));
+            btn.RegisterCallback(_onButtonHover);
         }
 
-        _btnContinue.clicked += OnContinueClicked;
-        _btnNewGame.clicked += OnNewGameClicked;
-        _btnLoad.clicked += OnLoadClicked;
-        _btnSettings.clicked += OnSettingsClicked;
-        _btnExit.clicked += OnExitClicked;
+        if (_btnContinue != null) _btnContinue.clicked += OnContinueClicked;
+        if (_btnNewGame != null) _btnNewGame.clicked += OnNewGameClicked;
+        if (_btnLoad != null) _btnLoad.clicked += OnLoadClicked;
+        if (_btnSettings != null) _btnSettings.clicked += OnSettingsClicked;
+        if (_btnExit != null) _btnExit.clicked += OnExitClicked;
+        if (_btnLoadBack != null) _btnLoadBack.clicked += CloseModals;
 
-        root.Q<Button>("btn-menu-load-back").clicked += CloseModals;
-
-        _modalOverlay.RegisterCallback<PointerDownEvent>(evt =>
-        {
-            if (evt.button == 0 && evt.target == _modalOverlay)
-                CloseModals();
-        });
+        _modalOverlay?.RegisterCallback(_onOverlayPointerDown);
 
         RefreshContinueAvailability();
         ApplyMenuSizing();
         AnimateButtonEntrance();
     }
 
+    private void UnbindElements()
+    {
+        _entranceMotions.Cancel();
+
+        if (_transitionMotion.IsActive())
+            _transitionMotion.Cancel();
+
+        _settingsView?.Dispose();
+        _settingsView = null;
+
+        foreach (Button btn in _buttons)
+        {
+            if (btn != null && _onButtonHover != null)
+                btn.UnregisterCallback(_onButtonHover);
+        }
+
+        if (_btnContinue != null) _btnContinue.clicked -= OnContinueClicked;
+        if (_btnNewGame != null) _btnNewGame.clicked -= OnNewGameClicked;
+        if (_btnLoad != null) _btnLoad.clicked -= OnLoadClicked;
+        if (_btnSettings != null) _btnSettings.clicked -= OnSettingsClicked;
+        if (_btnExit != null) _btnExit.clicked -= OnExitClicked;
+        if (_btnLoadBack != null) _btnLoadBack.clicked -= CloseModals;
+
+        if (_modalOverlay != null && _onOverlayPointerDown != null)
+            _modalOverlay.UnregisterCallback(_onOverlayPointerDown);
+
+        _buttonRims.Clear();
+        _buttons.Clear();
+        _buttonLabels.Clear();
+
+        _bgElement = null;
+        _centerColumn = null;
+        _logoElement = null;
+        _continueRim = null;
+        _btnContinue = null;
+        _btnNewGame = null;
+        _btnLoad = null;
+        _btnSettings = null;
+        _btnExit = null;
+        _btnLoadBack = null;
+        _modalOverlay = null;
+        _loadPanel = null;
+        _loadList = null;
+        _settingsPanel = null;
+        _settingsContent = null;
+        _fadeCurtain = null;
+
+        _boundRoot = null;
+        _lastBoundVersion = -1;
+    }
+
     public void ApplyMenuSizing()
     {
+        // Elements may not be attached to the panel yet while the UI is being (re)built; setting inline
+        // styles on them is fine. Only skip when nothing is bound.
+        if (_boundRoot == null)
+            return;
+
         float s = Mathf.Max(0.1f, menuScale);
 
         if (_bgElement != null)
@@ -242,6 +316,8 @@ public class MainMenuController : MonoBehaviour
 
     private void AnimateButtonEntrance()
     {
+        _entranceMotions.Cancel();
+
         for (int i = 0; i < _buttonRims.Count; i++)
         {
             VisualElement rim = _buttonRims[i];
@@ -258,9 +334,13 @@ public class MainMenuController : MonoBehaviour
                 .WithEase(Ease.OutCubic)
                 .Bind(t =>
                 {
+                    // Stale elements can't reach here: UnbindElements cancels these motions before any
+                    // rebind and in OnDisable. Don't skip detached frames, or the final value could be lost.
+                    if (rim == null) return;
                     rim.style.opacity = Mathf.Lerp(0f, targetAlpha, t);
                     rim.style.translate = new Translate(0f, Mathf.Lerp(16f, 0f, t));
-                });
+                })
+                .AddTo(_entranceMotions);
         }
     }
 
@@ -291,7 +371,7 @@ public class MainMenuController : MonoBehaviour
 
     private void OnLoadClicked()
     {
-        if (_isTransitioning || VNSaveManager.Instance == null) return;
+        if (_isTransitioning || VNSaveManager.Instance == null || _loadList == null) return;
         PlayOneShotSafe(clickSfxEventPath);
 
         IReadOnlyList<VNSaveSlotSummary> slots = VNSaveManager.Instance.GetAllSlotSummaries(includeAutosave: true);
@@ -344,9 +424,9 @@ public class MainMenuController : MonoBehaviour
             _loadList.Add(card);
         }
 
-        _modalOverlay.style.display = DisplayStyle.Flex;
-        _loadPanel.style.display = DisplayStyle.Flex;
-        _settingsPanel.style.display = DisplayStyle.None;
+        if (_modalOverlay != null) _modalOverlay.style.display = DisplayStyle.Flex;
+        if (_loadPanel != null) _loadPanel.style.display = DisplayStyle.Flex;
+        if (_settingsPanel != null) _settingsPanel.style.display = DisplayStyle.None;
     }
 
     private void OnSettingsClicked()
@@ -355,9 +435,9 @@ public class MainMenuController : MonoBehaviour
         PlayOneShotSafe(clickSfxEventPath);
 
         _settingsView?.SyncFromManager();
-        _modalOverlay.style.display = DisplayStyle.Flex;
-        _settingsPanel.style.display = DisplayStyle.Flex;
-        _loadPanel.style.display = DisplayStyle.None;
+        if (_modalOverlay != null) _modalOverlay.style.display = DisplayStyle.Flex;
+        if (_settingsPanel != null) _settingsPanel.style.display = DisplayStyle.Flex;
+        if (_loadPanel != null) _loadPanel.style.display = DisplayStyle.None;
     }
 
     private void CloseModals()
@@ -393,13 +473,21 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
+        if (_transitionMotion.IsActive())
+            _transitionMotion.Cancel();
+
         _fadeCurtain.style.opacity = 0f;
         _fadeCurtain.style.display = DisplayStyle.Flex;
 
-        LMotion.Create(0f, 1f, sceneTransitionDuration)
+        VisualElement curtain = _fadeCurtain;
+        _transitionMotion = LMotion.Create(0f, 1f, sceneTransitionDuration)
             .WithEase(Ease.InOutQuad)
             .WithOnComplete(() => SceneManager.LoadSceneAsync(gameplaySceneName))
-            .Bind(a => _fadeCurtain.style.opacity = a);
+            .Bind(a =>
+            {
+                if (curtain == null) return;
+                curtain.style.opacity = a;
+            });
     }
 
     // =========================================================================

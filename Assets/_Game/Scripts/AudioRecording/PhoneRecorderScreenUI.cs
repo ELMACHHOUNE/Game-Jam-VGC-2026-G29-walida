@@ -21,14 +21,21 @@ public class PhoneRecorderScreenUI : MonoBehaviour
     [SerializeField] private int canvasSortingOrder = 12;
     [SerializeField] private int waveformBarCount = 21;
 
-    [Header("Palette")]
-    [SerializeField] private Color screenBgColor = new Color(0.055f, 0.082f, 0.102f, 0.98f);
-    [SerializeField] private Color cardBgColor = new Color(0.095f, 0.135f, 0.165f, 0.95f);
+    [Header("Palette (L'Walida art direction)")]
+    [Tooltip("Midnight Blue #183744")]
+    [SerializeField] private Color screenBgColor = new Color(0.094f, 0.216f, 0.267f, 0.98f);
+    [Tooltip("Deep Oudaya Blue")]
+    [SerializeField] private Color cardBgColor = new Color(0.122f, 0.290f, 0.369f, 0.95f);
+    [Tooltip("Chalk White #F2EDE3")]
     [SerializeField] private Color chalkWhite = new Color(0.949f, 0.929f, 0.890f, 1f);
+    [Tooltip("Hassan Sand #C8A477")]
     [SerializeField] private Color hassanSand = new Color(0.784f, 0.643f, 0.467f, 1f);
-    [SerializeField] private Color terracotta = new Color(0.78f, 0.43f, 0.30f, 1f);
-    [SerializeField] private Color lockedEmerald = new Color(0.38f, 0.82f, 0.56f, 1f);
-    [SerializeField] private Color recCrimson = new Color(0.91f, 0.25f, 0.25f, 1f);
+    [Tooltip("Terracotta #AB6048")]
+    [SerializeField] private Color terracotta = new Color(0.671f, 0.376f, 0.282f, 1f);
+    [Tooltip("Signal locked: Olive Green, lightened to read on the dark screen")]
+    [SerializeField] private Color lockedEmerald = new Color(0.639f, 0.706f, 0.525f, 1f);
+    [Tooltip("Recording: warm terracotta red")]
+    [SerializeField] private Color recCrimson = new Color(0.761f, 0.333f, 0.235f, 1f);
 
     private readonly List<Texture2D> _generatedTextures = new List<Texture2D>();
     private readonly List<Sprite> _generatedSprites = new List<Sprite>();
@@ -37,6 +44,7 @@ public class PhoneRecorderScreenUI : MonoBehaviour
     private Sprite _circleSprite;
     private Sprite _ringSprite;
     private Font _uiFont;
+    private Font _headerFont;
 
     private Image[] _statusSignalBars;
     private Image _statusPillBg;
@@ -74,11 +82,9 @@ public class PhoneRecorderScreenUI : MonoBehaviour
         _circleSprite = CreateCircleSprite(96);
         _ringSprite = CreateRingSprite(128, 0.78f, 0.96f);
 
-        _uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (_uiFont == null)
-        {
-            _uiFont = Font.CreateDynamicFontFromOSFont("Arial", 24);
-        }
+        // Same typography as the rest of the game: Lora for readouts, Cinzel for headers
+        _uiFont = MedinaUIKit.BodyStrongFont;
+        _headerFont = MedinaUIKit.HeaderFont;
 
         BuildPhoneScreenCanvas();
     }
@@ -298,7 +304,7 @@ public class PhoneRecorderScreenUI : MonoBehaviour
         bg.type = Image.Type.Sliced;
 
         // Top subtle header gradient tint band
-        CreateRect("TopTint", root, new Color(0.12f, 0.22f, 0.28f, 0.25f),
+        CreateRect("TopTint", root, MedinaUIKit.WithAlpha(MedinaUIKit.OudayaBlue, 0.22f),
             new Vector2(0f, canvasH * 0.5f - 85f), new Vector2(canvasW - 12f, 170f));
 
         // 1. Top Status Bar (time + 4 signal bars + battery)
@@ -321,19 +327,31 @@ public class PhoneRecorderScreenUI : MonoBehaviour
             new Vector2(136f, topY), new Vector2(26f, 11f));
 
         // 2. App Label + Status Pill + Active Source Title
-        CreateText("AppHeader", root, "VOICE MEMOS", 17, FontStyle.Bold,
-            new Color(hassanSand.r, hassanSand.g, hassanSand.b, 0.85f), TextAnchor.MiddleCenter,
+        Text appHeader = CreateText("AppHeader", root, "VOICE MEMOS", 17, FontStyle.Normal,
+            new Color(hassanSand.r, hassanSand.g, hassanSand.b, 0.9f), TextAnchor.MiddleCenter,
             new Vector2(0f, canvasH * 0.5f - 108f), new Vector2(320f, 28f));
+        appHeader.font = _headerFont;
+
+        // Zellige stars framing the app title
+        for (int side = -1; side <= 1; side += 2)
+        {
+            Image star = CreateSpriteImage(side < 0 ? "HeaderStarLeft" : "HeaderStarRight", root, MedinaUIKit.StarSprite,
+                new Color(terracotta.r, terracotta.g, terracotta.b, 0.9f),
+                new Vector2(side * 96f, canvasH * 0.5f - 108f), new Vector2(14f, 14f));
+            star.type = Image.Type.Simple;
+        }
 
         _statusPillBg = CreateSpriteImage("StatusPillBg", root, _roundedRectSprite, new Color(1f, 1f, 1f, 0.08f),
             new Vector2(0f, canvasH * 0.5f - 156f), new Vector2(286f, 44f));
         _statusPillBg.type = Image.Type.Sliced;
         _statusPillText = CreateText("StatusPillText", _statusPillBg.rectTransform, "STATIC  ·  SEARCHING",
-            17, FontStyle.Bold, chalkWhite, TextAnchor.MiddleCenter, Vector2.zero, new Vector2(276f, 40f));
+            16, FontStyle.Normal, chalkWhite, TextAnchor.MiddleCenter, Vector2.zero, new Vector2(276f, 40f));
+        _statusPillText.font = _headerFont;
 
-        _sourceTitleText = CreateText("SourceTitle", root, "SOUK FREQUENCY", 24, FontStyle.Bold,
+        _sourceTitleText = CreateText("SourceTitle", root, "SOUK FREQUENCY", 23, FontStyle.Normal,
             chalkWhite, TextAnchor.MiddleCenter,
             new Vector2(0f, canvasH * 0.5f - 218f), new Vector2(340f, 40f));
+        _sourceTitleText.font = _headerFont;
 
         // 3. Waveform Card (21 rounded bars + center line)
         Image waveCard = CreateSpriteImage("WaveformCard", root, _roundedRectSprite, cardBgColor,

@@ -37,7 +37,7 @@ public class SoukAudioSegmentController : MonoBehaviour
     private float _currentStaticVolume;
     private AudioSource _staticSource;
     private AudioClip _generatedStaticClip;
-    private Font _uiFont;
+    private Image _objectiveIcon;
     private Text _objectiveText;
     private Text _signalStatusText;
     private GameObject _subtitleObj;
@@ -54,7 +54,15 @@ public class SoukAudioSegmentController : MonoBehaviour
 
         if (uiCanvas == null)
         {
-            uiCanvas = FindAnyObjectByType<Canvas>();
+            // Only a screen-space canvas: the phone screen is a world-space canvas and must not host the HUD
+            foreach (Canvas c in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                if (c.isRootCanvas && c.renderMode != RenderMode.WorldSpace)
+                {
+                    uiCanvas = c;
+                    break;
+                }
+            }
         }
 
         SetupStaticAudio();
@@ -141,22 +149,22 @@ public class SoukAudioSegmentController : MonoBehaviour
             if (signal >= required && isTargetStrongest)
             {
                 _signalStatusText.text = $"Locked onto {targetLabel} ({Mathf.RoundToInt(signal * 100f)}%) — Hold Left-Click / Space / R";
-                _signalStatusText.color = new Color(0.68f, 0.88f, 0.62f, 1f);
+                _signalStatusText.color = MedinaUIKit.Olive;
             }
             else if (signal >= required && strongest != null)
             {
                 _signalStatusText.text = $"Hearing: {strongest.DisplayName} ({Mathf.RoundToInt(signal * 100f)}%) — Keep searching for {targetLabel}";
-                _signalStatusText.color = new Color(0.95f, 0.80f, 0.50f, 1f);
+                _signalStatusText.color = MedinaUIKit.Terracotta;
             }
             else if (signal > 0.22f && strongest != null)
             {
                 _signalStatusText.text = $"Picking up {strongest.DisplayName} ({Mathf.RoundToInt(signal * 100f)}%) — Pan to focus";
-                _signalStatusText.color = new Color(0.95f, 0.80f, 0.50f, 1f);
+                _signalStatusText.color = MedinaUIKit.Terracotta;
             }
             else
             {
                 _signalStatusText.text = "Static interference... Pan the phone around the Souk";
-                _signalStatusText.color = new Color(0.949f, 0.929f, 0.890f, 0.88f);
+                _signalStatusText.color = MedinaUIKit.InkMuted;
             }
         }
     }
@@ -170,8 +178,14 @@ public class SoukAudioSegmentController : MonoBehaviour
             _targetRecorded = true;
             if (_objectiveText != null)
             {
-                _objectiveText.text = $"[✓]  Recorded: {targetLabel}";
-                _objectiveText.color = new Color(0.68f, 0.88f, 0.62f, 1f);
+                _objectiveText.text = $"Recorded: {targetLabel}";
+                _objectiveText.color = MedinaUIKit.Olive;
+            }
+
+            if (_objectiveIcon != null)
+            {
+                _objectiveIcon.sprite = MedinaUIKit.StarSprite;
+                _objectiveIcon.color = MedinaUIKit.Olive;
             }
 
             if (_signalStatusText != null)
@@ -191,7 +205,7 @@ public class SoukAudioSegmentController : MonoBehaviour
     private void ShowSubtitle(string line, float duration)
     {
         if (_subtitleObj == null || _subtitleText == null) return;
-        _subtitleText.text = line;
+        _subtitleText.text = MedinaUIKit.FormatSpeakerLine(line);
         _subtitleObj.SetActive(true);
         _subtitleTimer = duration;
     }
@@ -270,85 +284,34 @@ public class SoukAudioSegmentController : MonoBehaviour
             scaler.matchWidthOrHeight = 0.5f;
         }
 
-        _uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (_uiFont == null)
-        {
-            _uiFont = Font.CreateDynamicFontFromOSFont("Arial", 20);
-        }
+        Transform root = uiCanvas.transform;
 
-        // Top-left objective panel
-        GameObject panel = new GameObject("SoukObjectivePanel", typeof(RectTransform), typeof(Image));
-        panel.transform.SetParent(uiCanvas.transform, false);
-        RectTransform pRect = panel.GetComponent<RectTransform>();
-        pRect.anchorMin = new Vector2(0f, 1f);
-        pRect.anchorMax = new Vector2(0f, 1f);
-        pRect.pivot = new Vector2(0f, 1f);
-        pRect.anchoredPosition = new Vector2(28f, -28f);
-        pRect.sizeDelta = new Vector2(520f, 106f);
-        Image pImg = panel.GetComponent<Image>();
-        pImg.color = new Color(0.145f, 0.157f, 0.153f, 0.85f);
-        pImg.raycastTarget = false;
+        // Top-left objective card (storybook die-cut card, like the Medina HUD)
+        Image card = MedinaUIKit.CreateCard("SoukObjectivePanel", root, new Vector2(0f, 1f),
+            new Vector2(28f, -28f), new Vector2(560f, 128f));
 
-        _objectiveText = CreateText("ObjectiveText", panel.transform,
-            new Vector2(18f, -14f), new Vector2(484f, 34f),
-            $"RECORD SOUND:  {targetLabel}", 20, FontStyle.Bold,
-            new Color(0.784f, 0.643f, 0.467f, 1f), TextAnchor.MiddleLeft);
+        MedinaUIKit.CreateTopLeftText("ObjectiveLabel", card.transform, MedinaTextRole.Label,
+            "SOUND JOURNAL", 15, TextAnchor.MiddleLeft, new Vector2(30f, -18f), new Vector2(500f, 22f));
 
-        _signalStatusText = CreateText("SignalStatusText", panel.transform,
-            new Vector2(18f, -54f), new Vector2(484f, 38f),
-            "Static interference... Pan the phone to locate the sound", 15, FontStyle.Normal,
-            new Color(0.949f, 0.929f, 0.890f, 0.9f), TextAnchor.MiddleLeft);
+        _objectiveIcon = MedinaUIKit.CreateImage("ObjectiveStar", card.transform, MedinaUIKit.StarOutlineSprite,
+            MedinaUIKit.Navy, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(28f, -46f), new Vector2(26f, 26f), sliced: false);
 
-        // Bottom Abbass subtitle bar
-        _subtitleObj = new GameObject("SoukSubtitlePanel", typeof(RectTransform), typeof(Image));
-        _subtitleObj.transform.SetParent(uiCanvas.transform, false);
-        RectTransform sRect = _subtitleObj.GetComponent<RectTransform>();
-        sRect.anchorMin = new Vector2(0.5f, 0f);
-        sRect.anchorMax = new Vector2(0.5f, 0f);
-        sRect.pivot = new Vector2(0.5f, 0f);
-        sRect.anchoredPosition = new Vector2(0f, 34f);
-        sRect.sizeDelta = new Vector2(820f, 68f);
-        Image sImg = _subtitleObj.GetComponent<Image>();
-        sImg.color = new Color(0.10f, 0.11f, 0.11f, 0.90f);
-        sImg.raycastTarget = false;
+        _objectiveText = MedinaUIKit.CreateTopLeftText("ObjectiveText", card.transform, MedinaTextRole.Title,
+            $"Record: {targetLabel}", 22, TextAnchor.MiddleLeft, new Vector2(64f, -42f), new Vector2(470f, 34f));
 
-        GameObject txtObj = new GameObject("SubtitleText", typeof(RectTransform), typeof(Text));
-        txtObj.transform.SetParent(_subtitleObj.transform, false);
-        RectTransform tRect = txtObj.GetComponent<RectTransform>();
-        tRect.anchorMin = Vector2.zero;
-        tRect.anchorMax = Vector2.one;
-        tRect.offsetMin = new Vector2(18f, 6f);
-        tRect.offsetMax = new Vector2(-18f, -6f);
-        _subtitleText = txtObj.GetComponent<Text>();
-        _subtitleText.font = _uiFont;
-        _subtitleText.fontSize = 22;
-        _subtitleText.color = new Color(0.949f, 0.929f, 0.890f, 1f);
-        _subtitleText.alignment = TextAnchor.MiddleCenter;
-        _subtitleText.raycastTarget = false;
-    }
+        _signalStatusText = MedinaUIKit.CreateTopLeftText("SignalStatusText", card.transform, MedinaTextRole.Caption,
+            "Static interference... Pan the phone to locate the sound", 16, TextAnchor.MiddleLeft,
+            new Vector2(30f, -80f), new Vector2(504f, 36f));
 
-    private Text CreateText(string name, Transform parent, Vector2 anchoredPos, Vector2 size,
-        string content, int fontSize, FontStyle style, Color color, TextAnchor alignment)
-    {
-        GameObject obj = new GameObject(name, typeof(RectTransform), typeof(Text));
-        obj.transform.SetParent(parent, false);
-        RectTransform rect = obj.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0f, 1f);
-        rect.anchorMax = new Vector2(0f, 1f);
-        rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = anchoredPos;
-        rect.sizeDelta = size;
+        // Bottom subtitle card (speaker name highlighted, like the VN dialogue)
+        Image subtitle = MedinaUIKit.CreateCard("SoukSubtitlePanel", root, new Vector2(0.5f, 0f),
+            new Vector2(0f, 34f), new Vector2(900f, 92f));
+        _subtitleObj = subtitle.gameObject;
 
-        Text text = obj.GetComponent<Text>();
-        text.font = _uiFont;
-        text.text = content;
-        text.fontSize = fontSize;
-        text.fontStyle = style;
-        text.color = color;
-        text.alignment = alignment;
-        text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        text.raycastTarget = false;
-        return text;
+        _subtitleText = MedinaUIKit.CreateFillText("SubtitleText", subtitle.transform, MedinaTextRole.Body,
+            "", 22, TextAnchor.MiddleCenter, new Vector4(36f, 14f, 36f, 14f));
+        _subtitleObj.SetActive(false);
     }
 
     private void OnDestroy()
