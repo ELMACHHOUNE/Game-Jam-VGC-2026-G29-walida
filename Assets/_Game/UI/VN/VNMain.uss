@@ -95,7 +95,7 @@
     width: 78%;
     max-width: 1480px;
     min-height: 230px;
-    padding: 42px 48px 34px 48px;
+    flex-direction: column;
     background-color: transparent;
     border-width: 0;
     border-radius: 0;
@@ -103,16 +103,19 @@
     padding: 32px 44px 28px 44px;
 }
 
+/* Speaker name: a plain header inside the dialogue box, text sits directly below it */
 .nameplate {
-    position: absolute;
-    top: -22px;
-    left: 36px;
-    padding: 6px 22px;
-    background-color: transparent
+    position: relative;
+    align-self: flex-start;
+    height: 30px;           /* fixed: the header reserves this space even when no name is shown */
+    flex-shrink: 0;
+    justify-content: center;
+    margin: 0 0 10px 0;
+    padding: 0;
+    background-color: transparent;
+    background-image: none;
     border-width: 0;
     border-radius: 0;
-    -unity-background-scale-mode: stretch-to-fill;
-    padding: 8px 24px;
 }
 
 .speaker-label {
@@ -123,8 +126,7 @@
 }
 
 .dialogue-label {
-    font-size: 32px
-    line-height: 38px;
+    font-size: 32px;
     color: var(--color-text-primary);
     white-space: normal;
     -unity-text-align: upper-left;

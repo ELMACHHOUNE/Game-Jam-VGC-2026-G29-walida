@@ -15,6 +15,10 @@ public class ScreenFader : MonoBehaviour
     public float CurrentAlpha => _currentAlpha;
     public bool IsCurtainReady => _curtainReady;
 
+    /// <summary>Root of the always-on top overlay (above the VN and the HUD). Null until the UI has loaded.</summary>
+    public VisualElement OverlayRoot { get; private set; }
+    public event System.Action<VisualElement> OnOverlayRootReady;
+
     private void Awake()
     {
         _currentAlpha = startOpaqueBlack ? 1f : 0f;
@@ -51,6 +55,9 @@ public class ScreenFader : MonoBehaviour
         if (root == null) return;
         _curtain = root.Q<VisualElement>("screen-fade-curtain");
         ApplyAlpha(_currentAlpha);
+
+        OverlayRoot = root;
+        OnOverlayRootReady?.Invoke(root);
 
         if (_curtain != null)
         {

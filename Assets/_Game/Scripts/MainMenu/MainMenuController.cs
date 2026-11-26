@@ -384,6 +384,9 @@ public class MainMenuController : MonoBehaviour
         _isTransitioning = true;
         StopMenuBgm(immediate: false);
 
+        // A minigame return point from a previous session must not leak into New Game / Load.
+        MedinaLevelManager.ClearSavedReturnPosition();
+
         if (_fadeCurtain == null || sceneTransitionDuration <= 0f)
         {
             SceneManager.LoadSceneAsync(gameplaySceneName);

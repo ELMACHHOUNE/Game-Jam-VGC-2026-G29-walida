@@ -1,5 +1,5 @@
 === opening_phone_call ===
-#bg:blackscreen
+#bg:black_screen
 #char:lwalida
 #sfx:event:/SFX/PhoneRing
 #wait 2
@@ -8,10 +8,10 @@
 #sfx:event:/SFX/PhonePickup
 #wait 2
 
-#bgm:event:/BGM/OpeningBGM
 Oh. You picked up. I wasn't sure you would.
 Oh uhh I just… wanted to check on you. It's been a while.
 I was listening to the radio the other day and they mentioned Oudaya...
+[blank]
 #sfx_loop:event:/SFX/RadioStatic
 #wait 2.0
 #sfx_stop
@@ -30,7 +30,6 @@ It's been years since I last visited…
 I wonder if Khadija and Allal still live there...
 [laugh]
 
-#bgm_stop
 #sfx_loop:event:/SFX/Distortion
 #wait 2.0
 #sfx_stop
@@ -43,6 +42,19 @@ Well... bslama, habibi.
 I love you. I always have. We just never said it much.
 
 #sfx_stop
+#wait 3
+[continue]
+->END
+[continue]
+
+Wildi! Are you still there?
+Well... bslama, habibi.
+I love you. I always have. We just never said it much.
+
+#sfx_stop
+#wait 1.5
+[continue]
+->END
 #wait 1.5
 [continue]
 ->END

@@ -2619,6 +2619,39 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7555398314348397204, guid: a0c24ed7c3f7b4d159880883415ecf48, type: 3}
   m_PrefabInstance: {fileID: 185942484}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &188002853 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 732687192256267711, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+  m_PrefabInstance: {fileID: 4227467572365317690}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79edb187ad1df47458e2125622dea51b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VNStageView
+--- !u!114 &188002855 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+  m_PrefabInstance: {fileID: 4227467572365317690}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67b7b0fdff39f21448ddf3d0dbb3a070, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VNStoryController
+--- !u!114 &188002857 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+  m_PrefabInstance: {fileID: 4227467572365317690}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5058e5dc92551d244a7ad175de7b5456, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VNSceneFlowController
 --- !u!1 &190115069
 GameObject:
   m_ObjectHideFlags: 0
@@ -4331,7 +4364,7 @@ MonoBehaviour:
   storybookCamera: {fileID: 439736324}
   storyController: {fileID: 188002855}
   stageView: {fileID: 188002853}
-  sceneFlowController: {fileID: 0}
+  sceneFlowController: {fileID: 188002857}
   photographySceneName: PhotographingMinigame
   audioRecordingSceneName: AudioRecordingMinigame
   explorationAmbienceSource: {fileID: 0}
@@ -16225,6 +16258,17 @@ MonoBehaviour:
   - {x: -5, y: 4}
   - {x: -10.656952, y: -2.275938}
   - {x: -4.412342, y: -7.6407185}
+--- !u!114 &1186732336 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8412631013615052646, guid: 59533d09a5621014597d0047ae34ee7b, type: 3}
+  m_PrefabInstance: {fileID: 8472973015206366324}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b631e2be769995b4f933f659a750ee93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScreenFader
 --- !u!1 &1190221447
 GameObject:
   m_ObjectHideFlags: 0
@@ -19274,7 +19318,7 @@ MonoBehaviour:
   displayTitle: Lalla Amina (Rue Bazou)
   kind: 0
   targetSceneName: 
-  dialogueKnotName: opening_phone_call
+  dialogueKnotName: ch2_ouadya_neighborhood
   interactionRadius: 2.8
   promptVisual: {fileID: 302943296}
   promptBobHeight: 0.14
@@ -28700,39 +28744,6 @@ MonoBehaviour:
   - {x: 8.17622, y: -2.8715782}
   - {x: 5, y: 4}
   - {x: -28.245659, y: -20.70113}
---- !u!114 &188002853 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 732687192256267711, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
-  m_PrefabInstance: {fileID: 4227467572365317690}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 79edb187ad1df47458e2125622dea51b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VNStageView
---- !u!114 &188002855 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
-  m_PrefabInstance: {fileID: 4227467572365317690}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 67b7b0fdff39f21448ddf3d0dbb3a070, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VNStoryController
---- !u!114 &1186732336 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8412631013615052646, guid: 59533d09a5621014597d0047ae34ee7b, type: 3}
-  m_PrefabInstance: {fileID: 8472973015206366324}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b631e2be769995b4f933f659a750ee93, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ScreenFader
 --- !u!1001 &1414428877819368471
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -28823,9 +28834,33 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 284462047}
     - target: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: openingVnKnot
+      value: opening_phone_call
+      objectReference: {fileID: 0}
+    - target: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
       propertyPath: playerTransform
       value: 
       objectReference: {fileID: 1054223278}
+    - target: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: skipOpeningInEditor
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: worldToVnFadeDuration
+      value: 0.35
+      objectReference: {fileID: 0}
+    - target: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: worldToVnFadeInDuration
+      value: 0.35
+      objectReference: {fileID: 0}
+    - target: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: cameraToFirstPersonDuration
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 241234838741779994, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: switchOrthoToPerspectiveInVn
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 324853744419109614, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -28865,6 +28900,70 @@ PrefabInstance:
     - target: {fileID: 324853744419109614, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: inkJsonAsset
+      value: 
+      objectReference: {fileID: 4900000, guid: 6ecf48802d17c5f42bf32831b8eea0fd, type: 3}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.size
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[1].id
+      value: neighborhood1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[2].id
+      value: neighborhood2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[3].id
+      value: neighborhood1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[4].id
+      value: butcher
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[5].id
+      value: denial
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[6].id
+      value: acceptance
+      objectReference: {fileID: 0}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[1].sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 9da4a4eef5b56524aace385c064670ad, type: 3}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[2].sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 2d54f8e3b180d9148a8c642fbb4a23ef, type: 3}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[3].sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 9da4a4eef5b56524aace385c064670ad, type: 3}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[4].sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 3a18aeaf3a30445489a7c1a537fb4a8b, type: 3}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[5].sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 8525a94f4bfb7934495c5b6fe745a885, type: 3}
+    - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: backgrounds.Array.data[6].sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 4d000f5657f5d99429adee4fb4d5e1b9, type: 3}
+    - target: {fileID: 5839204716253948167, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: targetCamera
+      value: 
+      objectReference: {fileID: 439736325}
+    - target: {fileID: 5839204716253948167, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: forceActiveInEditor
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9165743868256141961, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
       propertyPath: m_Name

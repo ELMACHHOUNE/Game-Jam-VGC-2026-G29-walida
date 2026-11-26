@@ -14,6 +14,8 @@ public static class VNSessionBridge
     public static string TargetSlotId { get; set; } = string.Empty;
     public static bool HasPlayedBootSplash { get; set; }
     public static string CachedInkStateJson { get; set; } = string.Empty;
+    // Only used when the Ink story doesn't declare the denial variable itself
+    public static int CachedDenialScore { get; set; }
 
     public static bool HasAnySaveData()
     {

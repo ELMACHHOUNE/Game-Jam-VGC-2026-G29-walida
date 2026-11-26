@@ -58,9 +58,7 @@ public class VNStageView : MonoBehaviour
 
     [Header("Dialogue & Nameplate Textures")]
     [SerializeField] private Sprite dialogueBoxSprite;
-    [SerializeField] private Sprite nameplateSprite;
     [SerializeField] private RectOffset dialogueInnerPadding;
-    [SerializeField] private RectOffset nameplateInnerPadding;
 
     // Lifecycle & Input Events consumed by VNStoryController
     public event Action OnViewReady;
@@ -80,7 +78,21 @@ public class VNStageView : MonoBehaviour
     public event Action OnBacklogBackClicked;
 
     public bool IsReady => _boundRoot != null;
-    public bool IsDialogueVisible => _boundRoot != null && _boundRoot.resolvedStyle.display != DisplayStyle.None;
+    /// <summary>The bound UXML root (null until the PanelRenderer has loaded the UI).</summary>
+    public VisualElement RootElement => _boundRoot;
+    // Prefer the inline style we set ourselves: resolvedStyle only updates after the next layout pass,
+    // so it would still report the old state in the same frame SetDialogueVisible() was called.
+    public bool IsDialogueVisible
+    {
+        get
+        {
+            if (_boundRoot == null) return false;
+            StyleEnum<DisplayStyle> inline = _boundRoot.style.display;
+            if (inline.keyword == StyleKeyword.Undefined)
+                return inline.value != DisplayStyle.None;
+            return _boundRoot.resolvedStyle.display != DisplayStyle.None;
+        }
+    }
     public bool IsTyping => _isTyping;
     public bool IsBacklogOpen => _isBacklogOpen;
 
@@ -139,6 +151,11 @@ public class VNStageView : MonoBehaviour
     private float _currentBacklogYPercent = -100f;
     private bool _isBacklogOpen;
     private bool _isBacklogClosing;
+    private bool _hasBackground;
+    private VisualElement _topBar;
+    private CancellationTokenSource _glitchCts;
+    private int _glitchGeneration;
+    private UIGlitchBars _glitchBars;
 
     private void Awake()
     {
@@ -185,6 +202,9 @@ public class VNStageView : MonoBehaviour
 
     private void OnDestroy()
     {
+        _glitchCts?.Cancel();
+        _glitchCts?.Dispose();
+        _glitchCts = null;
         CancelHandle(_bgTween);
         CancelHandle(_cgTween);
         CancelHandle(_indicatorTween);
@@ -246,6 +266,7 @@ public class VNStageView : MonoBehaviour
         _stageLayer = root.Q<VisualElement>("layer-stage");
         _cgLayer = root.Q<VisualElement>("layer-cg");
         _advanceSurface = root.Q<VisualElement>("advance-surface");
+        _topBar = root.Q<VisualElement>("top-bar");
 
         _dialogueBox = root.Q<VisualElement>("dialogue-box");
         _nameplate = root.Q<VisualElement>("nameplate");
@@ -362,17 +383,24 @@ public class VNStageView : MonoBehaviour
         HideChoices();
         StopContinueIndicator();
 
+        // The name header always keeps its space (visibility, not display), so the dialogue text
+        // starts at the same spot whether or not a name is shown.
         if (string.IsNullOrWhiteSpace(speakerIdOrName))
         {
-            // Narration line: hide nameplate and dim all active portraits
+            // Narration / first-person line: hide the name and dim all active portraits
             if (_nameplate != null)
-                _nameplate.style.display = DisplayStyle.None;
+                _nameplate.style.visibility = Visibility.Hidden;
+            if (_speakerLabel != null)
+                _speakerLabel.text = string.Empty;
             SetActiveSpeaker(null);
         }
         else
         {
             if (_nameplate != null)
+            {
                 _nameplate.style.display = DisplayStyle.Flex;
+                _nameplate.style.visibility = Visibility.Visible;
+            }
 
             string lookupKey = speakerIdOrName.ToLowerInvariant();
 
@@ -380,18 +408,12 @@ public class VNStageView : MonoBehaviour
             {
                 _speakerLabel.text = charData.displayName;
                 _speakerLabel.style.color = charData.nameColor;
-                if (_nameplate != null)
-                {
-                    _nameplate.style.borderTopColor = charData.nameColor;
-                    _nameplate.style.borderBottomColor = charData.nameColor;
-                    _nameplate.style.borderLeftColor = charData.nameColor;
-                    _nameplate.style.borderRightColor = charData.nameColor;
-                }
                 SetActiveSpeaker(lookupKey);
             }
             else
             {
                 _speakerLabel.text = speakerIdOrName;
+                _speakerLabel.style.color = StyleKeyword.Null; // don't inherit the previous character's colour
                 SetActiveSpeaker(null);
             }
         }
@@ -542,21 +564,23 @@ public class VNStageView : MonoBehaviour
             }
         }
 
+        // The speaker name is a plain header inside the dialogue box: always transparent, no sprite or frame.
         if (_nameplate != null)
         {
-            if (nameplateSprite != null)
-                _nameplate.style.backgroundImage = new StyleBackground(nameplateSprite);
-
-            if (nameplateInnerPadding != null &&
-                (nameplateInnerPadding.left > 0 || nameplateInnerPadding.right > 0 ||
-                 nameplateInnerPadding.top > 0 || nameplateInnerPadding.bottom > 0))
-            {
-                _nameplate.style.paddingLeft = nameplateInnerPadding.left;
-                _nameplate.style.paddingRight = nameplateInnerPadding.right;
-                _nameplate.style.paddingTop = nameplateInnerPadding.top;
-                _nameplate.style.paddingBottom = nameplateInnerPadding.bottom;
-            }
+            _nameplate.style.backgroundImage = StyleKeyword.None;
+            _nameplate.style.backgroundColor = Color.clear;
+            _nameplate.style.borderTopWidth = 0;
+            _nameplate.style.borderBottomWidth = 0;
+            _nameplate.style.borderLeftWidth = 0;
+            _nameplate.style.borderRightWidth = 0;
         }
+    }
+
+    /// <summary>Shows/hides the autoplay/skip/log/pause bar (hidden for standalone narration lines).</summary>
+    public void SetTopBarVisible(bool visible)
+    {
+        if (_topBar != null)
+            _topBar.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
     public void SetTopBarFeatureVisibility(bool showAutoplay, bool showSkip)
@@ -846,12 +870,18 @@ public class VNStageView : MonoBehaviour
         {
             _bgBack.style.backgroundImage = StyleKeyword.None;
             _bgFront.style.backgroundImage = StyleKeyword.None;
+            _hasBackground = false;
             return;
         }
 
         var nextBg = new StyleBackground(newSprite);
 
-        if (instant || bgFadeDuration <= 0f)
+        // Crossfading from an empty stage means crossfading from whatever is behind the VN
+        // (the 2.5D world), so the first background after a clear always snaps in.
+        bool hadBackground = _hasBackground;
+        _hasBackground = true;
+
+        if (instant || !hadBackground || bgFadeDuration <= 0f)
         {
             _bgBack.style.backgroundImage = nextBg;
             _bgFront.style.backgroundImage = StyleKeyword.None;
@@ -1271,17 +1301,86 @@ public class VNStageView : MonoBehaviour
         });
     }
 
+    /// <summary>
+    /// Digital glitch over the VN: background/characters/CG tear sideways (overscaled so edges never show),
+    /// the dialogue box shudders, RGB-split bars flash and the whole stage flickers. Re-rolled every 30-70 ms.
+    /// A new call replaces a running glitch.
+    /// </summary>
     public void TriggerGlitch(float duration = 0.35f)
     {
         if (_boundRoot == null || duration <= 0f) return;
 
-        LMotion.Create(0f, 1f, duration)
-            .WithOnComplete(() => _boundRoot.style.translate = new Translate(0f, 0f))
-            .Bind(t =>
+        _glitchCts?.Cancel();
+        _glitchCts?.Dispose();
+        _glitchCts = new CancellationTokenSource();
+        _ = RunGlitchAsync(duration, ++_glitchGeneration, _glitchCts.Token);
+    }
+
+    private async Awaitable RunGlitchAsync(float duration, int generation, CancellationToken ct)
+    {
+        VisualElement[] layers = { _bgBack?.parent, _stageLayer, _cgLayer };
+        VisualElement barParent = _boundRoot.Q<VisualElement>("vn-root") ?? _boundRoot;
+        if (_glitchBars == null || !_glitchBars.IsAttachedTo(barParent))
+        {
+            _glitchBars?.Detach();
+            _glitchBars = new UIGlitchBars(barParent);
+        }
+
+        float start = Time.unscaledTime;
+        float end = start + duration;
+        float nextStep = 0f;
+
+        try
+        {
+            while (Time.unscaledTime < end)
             {
-                float decay = 1f - t;
-                float offsetX = UnityEngine.Random.Range(-18f, 18f) * decay;
-                _boundRoot.style.translate = new Translate(offsetX, 0f);
-            });
+                ct.ThrowIfCancellationRequested();
+
+                if (Time.unscaledTime >= nextStep)
+                {
+                    // Hits hardest at the start, eases out towards the end
+                    float k = Mathf.Lerp(1f, 0.35f, (Time.unscaledTime - start) / duration);
+
+                    foreach (VisualElement layer in layers)
+                    {
+                        if (layer == null) continue;
+                        layer.style.scale = new Scale(new Vector2(1.06f, 1.06f));
+                        layer.style.translate = new Translate(
+                            UnityEngine.Random.Range(-32f, 32f) * k,
+                            UnityEngine.Random.Range(-5f, 5f) * k);
+                    }
+
+                    if (_dialogueBox != null)
+                        _dialogueBox.style.translate = new Translate(UnityEngine.Random.Range(-8f, 8f) * k, 0f);
+
+                    _boundRoot.style.opacity = UnityEngine.Random.value < 0.3f
+                        ? UnityEngine.Random.Range(0.7f, 0.9f)
+                        : 1f;
+
+                    _glitchBars.Randomize(k);
+                    nextStep = Time.unscaledTime + UnityEngine.Random.Range(0.03f, 0.07f);
+                }
+
+                await Awaitable.NextFrameAsync(ct);
+            }
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            // Only the latest glitch restores the stage, so a replaced glitch can't undo the new one
+            if (generation == _glitchGeneration)
+            {
+                foreach (VisualElement layer in layers)
+                {
+                    if (layer == null) continue;
+                    layer.style.translate = StyleKeyword.Null;
+                    layer.style.scale = StyleKeyword.Null;
+                }
+
+                if (_dialogueBox != null) _dialogueBox.style.translate = StyleKeyword.Null;
+                if (_boundRoot != null) _boundRoot.style.opacity = StyleKeyword.Null;
+                _glitchBars?.Hide();
+            }
+        }
     }
 }

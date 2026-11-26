@@ -48,12 +48,21 @@ public class MedinaLevelManager : MonoBehaviour
 
         if (stageView == null)
             stageView = FindFirstObjectByType<VNStageView>();
+
+        if (sceneFlowController == null)
+            sceneFlowController = FindFirstObjectByType<VNSceneFlowController>();
     }
+
+    private bool HasFlowController => sceneFlowController != null && sceneFlowController.isActiveAndEnabled;
 
     private void OnEnable()
     {
         if (storyController != null)
+        {
             storyController.OnDialogueEnded += HandleDialogueEnded;
+            storyController.OnCapturingSaveData += HandleCapturingSaveData;
+            storyController.OnSaveDataLoaded += HandleSaveDataLoaded;
+        }
 
         if (autoBindSceneInteractables)
         {
@@ -68,7 +77,11 @@ public class MedinaLevelManager : MonoBehaviour
     private void OnDisable()
     {
         if (storyController != null)
+        {
             storyController.OnDialogueEnded -= HandleDialogueEnded;
+            storyController.OnCapturingSaveData -= HandleCapturingSaveData;
+            storyController.OnSaveDataLoaded -= HandleSaveDataLoaded;
+        }
 
         if (_sceneInteractables != null)
         {
@@ -91,6 +104,11 @@ public class MedinaLevelManager : MonoBehaviour
             if (storybookCamera != null)
                 storybookCamera.SnapToTarget();
         }
+
+        // The flow controller owns the boot sequence (opening VN / save restore / fade-in);
+        // toggling the stage or exploration here would fight it and flash the world.
+        if (HasFlowController)
+            return;
 
         bool restoringVnSave = VNSessionBridge.LaunchMode != VNLaunchMode.NewGame &&
                                VNSessionBridge.HasAnySaveData();
@@ -158,7 +176,7 @@ public class MedinaLevelManager : MonoBehaviour
 
         FadeExplorationAmbience(0f);
 
-        if (sceneFlowController != null && !string.IsNullOrWhiteSpace(knotName))
+        if (HasFlowController && !string.IsNullOrWhiteSpace(knotName))
         {
             sceneFlowController.StartWorldToVnTransition(knotName, focusTarget, clearStageOnDialogueJump);
         }
@@ -179,6 +197,11 @@ public class MedinaLevelManager : MonoBehaviour
         if (storyController != null)
             storyController.StopBGM(instant: false);
 
+        // The flow controller fades to black, tears the stage down, restores the camera
+        // and then calls EnterExploration(). Hiding the stage here would reveal the world early.
+        if (HasFlowController)
+            return;
+
         if (stageView != null)
         {
             stageView.ClearAllCharacters();
@@ -189,6 +212,27 @@ public class MedinaLevelManager : MonoBehaviour
 
         FadeExplorationAmbience(explorationAmbienceVolume);
         ResumeExploration();
+    }
+
+    private void HandleCapturingSaveData(VNSaveData data)
+    {
+        if (data == null || playerController == null)
+            return;
+
+        data.hasPlayerPosition = true;
+        data.playerPosition = playerController.transform.position;
+    }
+
+    private void HandleSaveDataLoaded(VNSaveData data)
+    {
+        if (data == null || !data.hasPlayerPosition || playerController == null)
+            return;
+
+        // A loaded save wins over the minigame return point.
+        ClearSavedReturnPosition();
+        playerController.TeleportTo(data.playerPosition);
+        if (storybookCamera != null)
+            storybookCamera.SnapToTarget();
     }
 
     public void LaunchMinigameScene(string sceneName)
@@ -219,6 +263,16 @@ public class MedinaLevelManager : MonoBehaviour
     public void ResumeExploration()
     {
         SetExplorationActive(true);
+    }
+
+    /// <summary>Brings the exploration ambience back up and (optionally) re-enables movement/interaction.</summary>
+    public void EnterExploration(bool enableControls = true)
+    {
+        SetExplorationActive(enableControls);
+
+        if (explorationAmbienceSource != null)
+            explorationAmbienceSource.loop = true;
+        FadeExplorationAmbience(explorationAmbienceVolume);
     }
 
     public void UnlockMedinaExit()

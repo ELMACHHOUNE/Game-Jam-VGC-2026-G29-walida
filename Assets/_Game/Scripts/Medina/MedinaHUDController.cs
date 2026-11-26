@@ -656,14 +656,8 @@ public class MedinaHUDController : MonoBehaviour
                 }
                 else
                 {
-                    VNSaveData data = VNSaveManager.Instance.LoadFromSlot(capturedId);
-                    if (data != null)
-                    {
-                        SetPaused(false);
-                        if (!string.IsNullOrEmpty(data.dialogue) || data.isWaitingForChoice)
-                            vnStageView?.SetDialogueVisible(true);
-                        storyController.LoadFromSaveData(data);
-                    }
+                    SetPaused(false);
+                    storyController.RequestLoadSlot(capturedId);
                 }
             });
 

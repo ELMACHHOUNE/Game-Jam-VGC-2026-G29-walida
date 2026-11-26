@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 1470137377207681321}
   - component: {fileID: 9419453809305401}
   - component: {fileID: 6763383087302405070}
+  - component: {fileID: 5839204716253948167}
   m_Layer: 5
   m_Name: VN_System
   m_TagString: Untagged
@@ -135,13 +136,7 @@ MonoBehaviour:
   charsPerClick: 2
   hideDialogueOnStart: 1
   dialogueBoxSprite: {fileID: 21300000, guid: 9881a87b7eeb48e42bb8bed3327b6548, type: 3}
-  nameplateSprite: {fileID: 21300000, guid: 9881a87b7eeb48e42bb8bed3327b6548, type: 3}
   dialogueInnerPadding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  nameplateInnerPadding:
     m_Left: 0
     m_Right: 0
     m_Top: 0
@@ -241,3 +236,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: FMODUnity::FMODUnity.StudioListener
   nonRigidbodyVelocity: 0
   attenuationObject: {fileID: 0}
+--- !u!114 &5839204716253948167
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9165743868256141961}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6d7e19b00a348e1b84b3b0f50e2b896, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VNDenialEffects
+  storyController: {fileID: 1470137377207681321}
+  stageView: {fileID: 732687192256267711}
+  targetCamera: {fileID: 0}
+  denialThreshold: 5

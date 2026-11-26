@@ -47,6 +47,13 @@ public class VNStoryController : MonoBehaviour
     [Header("Optional Keyboard/Gamepad Input")]
     [SerializeField] private InputActionReference advanceInputAction;
     [SerializeField] private InputActionReference toggleAutoInputAction;
+    [Tooltip("Advance dialogue with the Space key when no Advance Input Action is assigned.")]
+    [SerializeField] private bool advanceWithSpaceKey = true;
+
+    [Header("Denial Score")]
+    [Tooltip("Ink global variable that holds the score (declare `VAR denial = 0` in Ink). " +
+             "#denial:N tags add to it, and `~ denial += 1` in Ink works too. If the variable isn't declared, an internal counter is used.")]
+    [SerializeField] private string denialVariableName = "denial";
 
     [Header("Exploration Integration")]
     [SerializeField] private bool startStoryOnBoot = false;
@@ -60,6 +67,11 @@ public class VNStoryController : MonoBehaviour
 
     public event Action OnDialogueEnded;
 
+    /// <summary>Raised while building save data so other systems (player position, etc.) can add their state.</summary>
+    public event Action<VNSaveData> OnCapturingSaveData;
+    /// <summary>Raised after a save has been applied to the story/stage.</summary>
+    public event Action<VNSaveData> OnSaveDataLoaded;
+
     private EventInstance _activeBgmInstance;
     private string _currentBgmPath = string.Empty;
     private EventInstance _activeLoopSfxInstance;
@@ -71,6 +83,18 @@ public class VNStoryController : MonoBehaviour
     private bool _isStepping;
     private bool _autoAdvanceCurrentLine;
 
+    // Denial score
+    private int _denialFallback;
+    private int _lastNotifiedDenial = int.MinValue;
+    private bool _suppressDenialTagThisStep;
+
+    // BGM requested by Ink (before any denial/horror substitution)
+    private string _requestedBgmPath = string.Empty;
+
+    // Standalone narration line (not driven by Ink), e.g. the first-entry world intro
+    private bool _isNarrationActive;
+    private Action _narrationFinished;
+
     private CancellationTokenSource _modeCts;
     private CancellationTokenSource _stepCts;
     private CancellationTokenSource _bgmTimerCts;
@@ -79,12 +103,104 @@ public class VNStoryController : MonoBehaviour
     private string _currentBgId = string.Empty;
     private string _currentCgId = string.Empty;
     private string _lastSpeaker = string.Empty;
+    // Set by #speaker:<id> and kept for every following line until #speaker:none / #narrator
+    private string _stickySpeaker = string.Empty;
     private string _lastDialogue = string.Empty;
 
     public Story CurrentStory => _story;
     public string CurrentBgmId => _currentBgmPath;
     public bool IsAutoMode => _isAutoMode;
     public bool IsPaused => _isPaused;
+    public bool IsNarrationActive => _isNarrationActive;
+
+    /// <summary>Raised whenever the denial score changes (and once after a story is started or a save is loaded).</summary>
+    public event Action<int> OnDenialScoreChanged;
+
+    /// <summary>Optional hook that swaps a requested BGM event for another (used for the high-denial horror music).</summary>
+    public Func<string, string> BgmPathResolver { get; set; }
+
+    private bool HasInkDenialVariable =>
+        _story != null && !string.IsNullOrWhiteSpace(denialVariableName) &&
+        _story.variablesState.GlobalVariableExistsWithName(denialVariableName);
+
+    public int DenialScore
+    {
+        get
+        {
+            if (!HasInkDenialVariable) return _denialFallback;
+            object value = _story.variablesState[denialVariableName];
+            return value switch
+            {
+                int i => i,
+                float f => Mathf.RoundToInt(f),
+                _ => _denialFallback
+            };
+        }
+    }
+
+    public void AddDenial(int amount)
+    {
+        if (amount == 0) return;
+
+        if (HasInkDenialVariable)
+            _story.variablesState[denialVariableName] = DenialScore + amount;
+        else
+            _denialFallback += amount;
+
+        RefreshDenialScore();
+    }
+
+    /// <summary>Sets the score directly (writes the Ink variable when declared). Used by the editor test tools.</summary>
+    public void SetDenialScore(int value)
+    {
+        if (HasInkDenialVariable)
+            _story.variablesState[denialVariableName] = value;
+        else
+            _denialFallback = value;
+
+        RefreshDenialScore();
+    }
+
+    private void RefreshDenialScore(bool forceNotify = false)
+    {
+        int score = DenialScore;
+        if (!forceNotify && score == _lastNotifiedDenial) return;
+        _lastNotifiedDenial = score;
+        OnDenialScoreChanged?.Invoke(score);
+    }
+
+    private static int SumDenialTags(List<string> tags)
+    {
+        int total = 0;
+        if (tags == null) return total;
+        foreach (string raw in tags)
+        {
+            if (TryParseDenialTag(raw, out int amount))
+                total += amount;
+        }
+        return total;
+    }
+
+    // Accepts "denial:1", "denial:+1", "denial:-1", "denial 1"
+    private static bool TryParseDenialTag(string rawTag, out int amount)
+    {
+        amount = 0;
+        if (string.IsNullOrWhiteSpace(rawTag)) return false;
+        string tag = rawTag.Trim();
+        if (!tag.StartsWith("denial", StringComparison.OrdinalIgnoreCase) || tag.Length <= 6) return false;
+
+        char delimiter = tag[6];
+        if (delimiter != ':' && !char.IsWhiteSpace(delimiter)) return false;
+
+        return int.TryParse(tag.Substring(7).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out amount);
+    }
+
+    /// <summary>Re-applies the BGM resolver to the current track (e.g. after the denial state flips).</summary>
+    public void RefreshBgm()
+    {
+        if (!string.IsNullOrEmpty(_requestedBgmPath) && _activeBgmInstance.isValid())
+            PlayBGM(_requestedBgmPath);
+    }
 
     private void Awake()
     {
@@ -198,8 +314,50 @@ public class VNStoryController : MonoBehaviour
     {
         if (stageView == null || !stageView.IsDialogueVisible) return;
 
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (Keyboard.current == null) return;
+
+        if (Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
             TogglePause();
+            return;
+        }
+
+        bool hasAdvanceAction = advanceInputAction != null && advanceInputAction.action != null;
+        if (advanceWithSpaceKey && !hasAdvanceAction && !stageView.IsBacklogOpen &&
+            Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            HandleAdvanceRequested();
+        }
+    }
+
+    /// <summary>
+    /// Shows a single line in the VN dialogue box without running Ink (no background, no top bar).
+    /// Click or Space completes the typing, the next click/Space closes it and invokes <paramref name="onFinished"/>.
+    /// The caller is responsible for showing/hiding the stage.
+    /// </summary>
+    public void PlayNarrationLine(string speaker, string text, Action onFinished)
+    {
+        CancelStepTask();
+        CancelModeTimer();
+        SetAutoMode(false);
+        _areChoicesVisible = false;
+        stageView.HideChoices();
+        stageView.SetTopBarVisible(false);
+
+        _isNarrationActive = true;
+        _narrationFinished = onFinished;
+        stageView.PresentLine(speaker ?? string.Empty, text ?? string.Empty, instant: false);
+    }
+
+    private void FinishNarrationLine()
+    {
+        _isNarrationActive = false;
+        stageView.SetTopBarVisible(true);
+        stageView.PresentLine(string.Empty, string.Empty, instant: true);
+
+        Action callback = _narrationFinished;
+        _narrationFinished = null;
+        callback?.Invoke();
     }
 
     // =========================================================================
@@ -240,18 +398,25 @@ public class VNStoryController : MonoBehaviour
         _story = new Story(inkJsonAsset.text);
         _visitedChoicePaths.Clear();
         _backlog.Clear();
+        _denialFallback = 0;
 
         if (!string.IsNullOrEmpty(VNSessionBridge.CachedInkStateJson))
         {
             _story.state.LoadJson(VNSessionBridge.CachedInkStateJson);
             VNSessionBridge.CachedInkStateJson = string.Empty;
+            _denialFallback = VNSessionBridge.CachedDenialScore;
         }
+
+        RefreshDenialScore(forceNotify: true);
     }
 
     public void CacheInkStateForSceneTransition()
     {
         if (_story != null)
+        {
             VNSessionBridge.CachedInkStateJson = _story.state.ToJson();
+            VNSessionBridge.CachedDenialScore = _denialFallback;
+        }
     }
 
     public void JumpToKnot(string knotName, bool clearStageFirst = true)
@@ -282,6 +447,7 @@ public class VNStoryController : MonoBehaviour
         SetPaused(false, showPauseMenu: false);
         SetAutoMode(false);
         _areChoicesVisible = false;
+        _stickySpeaker = string.Empty; // every conversation starts with the narrator
 
         if (clearStageFirst && stageView != null)
         {
@@ -348,9 +514,12 @@ public class VNStoryController : MonoBehaviour
         _areChoicesVisible = false;
         _visitedChoicePaths.Clear();
         _backlog.Clear();
+        _stickySpeaker = string.Empty;
+        _denialFallback = 0;
         stageView.HideChoices();
 
         _story = new Story(compiledInkJson.text);
+        RefreshDenialScore(forceNotify: true);
 
         if (!string.IsNullOrWhiteSpace(startKnot))
             _story.ChoosePathString(startKnot);
@@ -411,11 +580,15 @@ public class VNStoryController : MonoBehaviour
                 _lastSpeaker = speaker;
                 _lastDialogue = dialogue;
                 _isStepping = false;
+                _suppressDenialTagThisStep = false;
+                RefreshDenialScore(); // catches "~ denial += 1" written directly in Ink
                 stageView.PresentLine(speaker, dialogue, instant: instantPresentation);
                 return;
             }
 
             _isStepping = false;
+            _suppressDenialTagThisStep = false;
+            RefreshDenialScore();
 
             if (_story.currentChoices.Count > 0)
             {
@@ -484,6 +657,17 @@ public class VNStoryController : MonoBehaviour
 
     private void ApplyTagImmediate(string rawTag, bool instant, ref string speakerOverride)
     {
+        // #denial:N — scored even when skipping (instant). Ignored once if the same tag was
+        // already counted from the chosen choice's own tags, so it never counts twice.
+        if (TryParseDenialTag(rawTag, out int denialAmount))
+        {
+            if (_suppressDenialTagThisStep)
+                _suppressDenialTagThisStep = false;
+            else
+                AddDenial(denialAmount);
+            return;
+        }
+
         // Split ONLY on the first colon so FMOD paths like "event:/SFX/PhoneRing" stay intact
         int colonIdx = rawTag.IndexOf(':');
         string command = colonIdx >= 0
@@ -561,6 +745,22 @@ public class VNStoryController : MonoBehaviour
 
             case "speaker" when !string.IsNullOrEmpty(payload):
                 {
+                    // Sticky: applies to this line and every following line until changed.
+                    bool toNarrator = payload.Equals("none", StringComparison.OrdinalIgnoreCase) ||
+                                      payload.Equals("narrator", StringComparison.OrdinalIgnoreCase);
+                    _stickySpeaker = toNarrator ? string.Empty : payload;
+                    break;
+                }
+
+            case "narrator":
+                {
+                    _stickySpeaker = string.Empty;
+                    break;
+                }
+
+            case "as" when !string.IsNullOrEmpty(payload):
+                {
+                    // One-line override that leaves the sticky speaker alone: #as:khadija  /  #as:none
                     speakerOverride = payload;
                     break;
                 }
@@ -701,7 +901,8 @@ public class VNStoryController : MonoBehaviour
         }
     }
 
-    private static void ExtractSpeakerAndText(string line, string tagOverride, out string speaker, out string text)
+    // Speaker priority: #as one-line tag  >  inline "Name: text" prefix  >  sticky #speaker  >  narrator (no name)
+    private void ExtractSpeakerAndText(string line, string tagOverride, out string speaker, out string text)
     {
         if (!string.IsNullOrEmpty(tagOverride))
         {
@@ -722,7 +923,7 @@ public class VNStoryController : MonoBehaviour
             }
         }
 
-        speaker = string.Empty;
+        speaker = _stickySpeaker;
         text = line;
     }
 
@@ -737,6 +938,17 @@ public class VNStoryController : MonoBehaviour
 
     private void HandleAdvanceRequested()
     {
+        if (_isNarrationActive)
+        {
+            if (_isPaused || !stageView.IsDialogueVisible) return;
+
+            if (stageView.IsTyping)
+                stageView.CompleteTyping();
+            else
+                FinishNarrationLine();
+            return;
+        }
+
         if (_story == null || _isPaused || _isStepping || !stageView.IsDialogueVisible) return;
 
         if (_isAutoMode && cancelAutoOnManualClick)
@@ -768,6 +980,13 @@ public class VNStoryController : MonoBehaviour
 
         RecordBacklogEntry("CHOICE", chosenText, isChoice: true);
 
+        // "+ [It's okay...] #denial:1" — depending on where Ink attaches the tag it shows up on the
+        // choice itself and/or on the line after it; count it here and skip the duplicate.
+        int choiceDenial = SumDenialTags(chosen.tags);
+        _suppressDenialTagThisStep = choiceDenial != 0;
+        if (choiceDenial != 0)
+            AddDenial(choiceDenial);
+
         _areChoicesVisible = false;
         _story.ChooseChoiceIndex(choiceIndex);
 
@@ -786,21 +1005,53 @@ public class VNStoryController : MonoBehaviour
 
     public VNSaveData CaptureSaveData(string label)
     {
-        return new VNSaveData
+        EnsureStoryInitialized();
+        if (_story == null)
+            return null;
+
+        var data = new VNSaveData
         {
             backlog = new List<VNBacklogEntry>(_backlog),
             label = label,
             inkStateJson = _story.state.ToJson(),
             visitedChoicePaths = new List<string>(_visitedChoicePaths),
             speaker = _lastSpeaker,
+            stickySpeaker = _stickySpeaker,
             dialogue = _lastDialogue,
             isWaitingForChoice = _areChoicesVisible,
             backgroundId = _currentBgId,
             eventCgId = _currentCgId,
-            bgmId = _currentBgmPath,
+            bgmId = _requestedBgmPath, // the Ink-requested track; the horror swap is re-applied on load
+            denialScore = DenialScore,
             activeSpeakerId = stageView.GetActiveSpeakerId(),
-            characters = stageView.CaptureCharacterStates()
+            characters = stageView.CaptureCharacterStates(),
+            // A narration line is shown over the world, so a save taken during it is an exploration save.
+            inWorld = !stageView.IsDialogueVisible || _isNarrationActive
         };
+
+        OnCapturingSaveData?.Invoke(data);
+        return data;
+    }
+
+    /// <summary>
+    /// Loads a slot mid-game. When a scene flow controller exists the scene is reloaded behind a fade,
+    /// so the boot sequence restores VN/world state, camera and player position in one consistent path.
+    /// </summary>
+    public void RequestLoadSlot(string slotId)
+    {
+        VNSceneFlowController flow = FindFirstObjectByType<VNSceneFlowController>();
+        if (flow != null)
+        {
+            flow.LoadSlotAndReloadScene(slotId);
+            return;
+        }
+
+        VNSaveData data = VNSaveManager.Instance != null ? VNSaveManager.Instance.LoadFromSlot(slotId) : null;
+        if (data == null) return;
+
+        bool isMidVn = !data.inWorld && (data.isWaitingForChoice || !string.IsNullOrEmpty(data.dialogue));
+        stageView.SetDialogueVisible(isMidVn);
+        LoadFromSaveData(data);
     }
 
     public void LoadFromSaveData(VNSaveData data)
@@ -815,6 +1066,8 @@ public class VNStoryController : MonoBehaviour
 
         _story = new Story(inkJsonAsset.text);
         _story.state.LoadJson(data.inkStateJson);
+        _denialFallback = data.denialScore; // ignored when Ink declares the variable (its value lives in inkStateJson)
+        RefreshDenialScore(forceNotify: true);
 
         _visitedChoicePaths.Clear();
         if (data.visitedChoicePaths != null)
@@ -848,13 +1101,20 @@ public class VNStoryController : MonoBehaviour
 
         // 4. Restore Dialogue & Pending Choices
         _lastSpeaker = data.speaker ?? string.Empty;
+        _stickySpeaker = data.stickySpeaker ?? string.Empty;
         _lastDialogue = data.dialogue ?? string.Empty;
         stageView.HideChoices();
         _backlog.Clear();
         if (data.backlog != null)
             _backlog.AddRange(data.backlog);
 
-        if (data.isWaitingForChoice && _story.currentChoices.Count > 0)
+        if (data.inWorld)
+        {
+            // Saved while exploring: nothing to present, the stage stays hidden.
+            _areChoicesVisible = false;
+            stageView.PresentLine(string.Empty, string.Empty, instant: true);
+        }
+        else if (data.isWaitingForChoice && _story.currentChoices.Count > 0)
         {
             stageView.PresentLine(_lastSpeaker, _lastDialogue, instant: true);
             PresentCurrentChoices();
@@ -864,6 +1124,8 @@ public class VNStoryController : MonoBehaviour
             _areChoicesVisible = false;
             stageView.PresentLine(_lastSpeaker, _lastDialogue, instant: false);
         }
+
+        OnSaveDataLoaded?.Invoke(data);
     }
 
     private void RecordBacklogEntry(string speaker, string text, bool isChoice)
@@ -908,9 +1170,7 @@ public class VNStoryController : MonoBehaviour
         }
         else
         {
-            VNSaveData data = VNSaveManager.Instance.LoadFromSlot(slotId);
-            if (data != null)
-                LoadFromSaveData(data);
+            RequestLoadSlot(slotId);
         }
     }
 
@@ -1209,6 +1469,14 @@ public class VNStoryController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(eventPath) || !RuntimeManager.IsInitialized)
             return;
 
+        _requestedBgmPath = eventPath;
+        if (BgmPathResolver != null)
+        {
+            string resolved = BgmPathResolver(eventPath);
+            if (!string.IsNullOrWhiteSpace(resolved))
+                eventPath = resolved;
+        }
+
         if (string.Equals(_currentBgmPath, eventPath, StringComparison.OrdinalIgnoreCase) &&
             _activeBgmInstance.isValid())
         {
@@ -1241,6 +1509,7 @@ public class VNStoryController : MonoBehaviour
     {
         CancelTokenSource(ref _bgmTimerCts);
         _currentBgmPath = string.Empty;
+        _requestedBgmPath = string.Empty;
         StopFmodInstance(ref _activeBgmInstance, immediate: instant);
     }
 
