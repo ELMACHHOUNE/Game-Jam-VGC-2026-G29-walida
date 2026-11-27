@@ -15,6 +15,11 @@ public class NeighborhoodPhotoTarget : MonoBehaviour
     [TextArea(2, 4)]
     [SerializeField] private string memoryCaption = "Her shadow still lingers over her old doorway.";
 
+    [Header("Journal Link")]
+    [Tooltip("Journal entry unlocked when this spot is photographed. Leave empty to use the Target Id. " +
+             "Must match an Entry Id in Medina_HUD > Journal Photographs.")]
+    [SerializeField] private string journalEntryId = "";
+
     [Header("Curated Book Photo")]
     [SerializeField] private Texture2D curatedBookPhoto;
 
@@ -29,6 +34,7 @@ public class NeighborhoodPhotoTarget : MonoBehaviour
     [SerializeField] private UnityEvent<NeighborhoodPhotoTarget> onPhotoCollected;
 
     public string TargetId => targetId;
+    public string JournalEntryId => string.IsNullOrWhiteSpace(journalEntryId) ? targetId : journalEntryId.Trim();
     public string GuideLabel => guideLabel;
     public string BookTitle => bookTitle;
     public string MemoryCaption => memoryCaption;

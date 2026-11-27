@@ -166,10 +166,17 @@ public class VNSceneFlowController : MonoBehaviour
         VNLaunchMode mode = VNSessionBridge.LaunchMode;
         VNSaveData loadedSave = null;
 
-        if (mode == VNLaunchMode.ContinueLatest && VNSaveManager.Instance != null)
+        bool returningFromMinigame = mode == VNLaunchMode.ReturnFromMinigame;
+
+        if (returningFromMinigame)
+            loadedSave = MinigameSession.TakeSnapshotForReturn(); // in-memory medina state + minigame unlocks
+        else if (mode == VNLaunchMode.ContinueLatest && VNSaveManager.Instance != null)
             loadedSave = VNSaveManager.Instance.GetLatestSave();
         else if (mode == VNLaunchMode.LoadSpecificSlot && VNSaveManager.Instance != null)
             loadedSave = VNSaveManager.Instance.LoadFromSlot(VNSessionBridge.TargetSlotId);
+
+        if (!returningFromMinigame)
+            MinigameSession.Clear(); // a stale hand-off must never leak into New Game / Load
 
         VNSessionBridge.LaunchMode = VNLaunchMode.NewGame;
         _hasSeenWorldIntro = false; // a loaded save overrides this via OnSaveDataLoaded
@@ -179,7 +186,7 @@ public class VNSceneFlowController : MonoBehaviour
         {
             storyController.LoadFromSaveData(loadedSave);
 
-            if (playOpeningKnotOnContinue && ShouldPlayOpening)
+            if (!returningFromMinigame && playOpeningKnotOnContinue && ShouldPlayOpening)
             {
                 stageView.SetDialogueVisible(true);
                 if (levelManager != null) levelManager.SetExplorationActive(false);
@@ -215,6 +222,9 @@ public class VNSceneFlowController : MonoBehaviour
                 if (levelManager != null) levelManager.EnterExploration(enableControls: !WillPlayWorldIntro);
             }
         }
+
+        // Mirror captured photos/recordings into Ink (VAR captured_<entryId>) so dialogue can react to them
+        storyController.SyncCapturedEntriesToInk();
 
         // Give UI Toolkit one frame to lay out the VN stage (background, characters)
         // before the curtain lifts, so the 2.5D world never peeks through.
@@ -412,7 +422,101 @@ public class VNSceneFlowController : MonoBehaviour
     private void HandleDialogueEnded()
     {
         if (_isTransitioning) return;
+
+        // The ending knot itself just finished -> leave the level
+        if (levelManager != null && levelManager.IsEndingInProgress)
+        {
+            _ = FinishEndingAsync();
+            return;
+        }
+
+        // Mark the NPC we were talking to as done (hides its prompt, blocks re-talking)
+        if (levelManager != null)
+            levelManager.NotifyDialogueFinished();
+
+        // That was the last story NPC -> go straight into the acceptance / denial ending
+        if (levelManager != null && levelManager.TryBeginEnding(out string endingKnot, out _))
+        {
+            _ = TransitionIntoEndingAsync(endingKnot);
+            return;
+        }
+
         _ = TransitionFromVnToWorldAsync();
+    }
+
+    // =========================================================================
+    // 4. ENDINGS (all story NPCs done -> acceptance / denial knot -> leave the level)
+    // =========================================================================
+
+    private async Awaitable TransitionIntoEndingAsync(string endingKnot)
+    {
+        _isTransitioning = true;
+
+        try
+        {
+            if (levelManager != null)
+                levelManager.SetExplorationActive(false);
+
+            if (screenFader != null)
+                await screenFader.FadeOutToBlackAsync(vnToWorldFadeOutDuration);
+
+            if (storyController == null || !storyController.HasKnot(endingKnot))
+            {
+                Debug.LogWarning($"[VNSceneFlowController] Ending knot '{endingKnot}' is not set or not in the compiled Ink story. " +
+                                 "Set it on MedinaLevelManager > Story Progress & Endings.");
+                _isTransitioning = false;
+                await FinishEndingAsync(alreadyBlack: true);
+                return;
+            }
+
+            if (stageView != null)
+            {
+                stageView.ClearAllCharacters();
+                stageView.HideEventCG(instant: true);
+                stageView.SetDialogueVisible(true);
+            }
+
+            storyController.JumpToKnot(endingKnot, clearStageFirst: true);
+
+            if (blackHoldBetweenFades > 0f)
+                await Awaitable.WaitForSecondsAsync(blackHoldBetweenFades);
+
+            await Awaitable.NextFrameAsync();
+            if (screenFader != null)
+                await screenFader.FadeInFromBlackAsync(vnToWorldFadeInDuration);
+        }
+        finally
+        {
+            _isTransitioning = false;
+        }
+    }
+
+    private async Awaitable FinishEndingAsync(bool alreadyBlack = false)
+    {
+        if (_isTransitioning) return;
+        _isTransitioning = true;
+
+        if (!alreadyBlack && screenFader != null)
+            await screenFader.FadeOutToBlackAsync(vnToWorldFadeOutDuration);
+
+        if (storyController != null)
+            storyController.StopBGM(instant: true);
+
+        Time.timeScale = 1f;
+        MedinaLevelManager.ClearSavedReturnPosition();
+        VNSessionBridge.CachedInkStateJson = string.Empty;
+        VNSessionBridge.LaunchMode = VNLaunchMode.NewGame;
+
+        string target = levelManager != null ? levelManager.SceneAfterEnding : "MainMenu";
+        if (!string.IsNullOrWhiteSpace(target) && Application.CanStreamedLevelBeLoaded(target))
+        {
+            await SceneManager.LoadSceneAsync(target);
+            return;
+        }
+
+        Debug.LogWarning($"[VNSceneFlowController] Scene after ending '{target}' is not in the build's scene list; returning to the world.");
+        _isTransitioning = false;
+        await TransitionFromVnToWorldAsync();
     }
 
     private async Awaitable TransitionFromVnToWorldAsync()

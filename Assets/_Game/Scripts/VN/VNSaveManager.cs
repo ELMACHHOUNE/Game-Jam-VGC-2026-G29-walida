@@ -53,6 +53,13 @@ public class VNSaveData
     public Vector3 playerPosition;
     public bool hasSeenWorldIntro;
     public int denialScore;
+
+    // Story NPC progress
+    public List<string> completedNpcIds = new();
+
+    // Journal entries unlocked by minigames (see JournalProgress)
+    public List<string> unlockedJournalEntries = new();
+    public bool endingStarted;
 }
 
 public readonly struct VNSaveSlotSummary

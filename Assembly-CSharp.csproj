@@ -86,8 +86,10 @@
     <Compile Include="Assets\_Game\Scripts\Audio\FMODAudioManager.cs" />
     <Compile Include="Assets\_Game\Scripts\Medina\MedinaInteriorFurnitureBuilder.cs" />
     <Compile Include="Assets\_Game\Scripts\AudioRecording\AudioMixCaptureTap.cs" />
+    <Compile Include="Assets\_Game\Scripts\MinigameSession.cs" />
     <Compile Include="Assets\_Game\Scripts\UI\MedinaUIKit.cs" />
     <Compile Include="Assets\_Game\Scripts\Medina\StorybookCutout.cs" />
+    <Compile Include="Assets\_Game\Scripts\Medina\MinigameReturnToMedina.cs" />
     <Compile Include="Assets\_Game\Scripts\Medina\MedinaPlotMarker.cs" />
     <Compile Include="Assets\_Game\Scripts\Audio\MedinaMapSoundEmitter.cs" />
     <Compile Include="Assets\_Game\Scripts\Settings\VNSettingsManager.cs" />
@@ -127,6 +129,7 @@
     <Compile Include="Assets\_Game\Scripts\Photography\PhoneArmStretch.cs" />
     <Compile Include="Assets\_Game\Scripts\VN\VNSessionBridge.cs" />
     <Compile Include="Assets\_Game\Scripts\VN\RichTextTypewriter.cs" />
+    <Compile Include="Assets\_Game\Scripts\VN\JournalProgress.cs" />
     <Compile Include="Assets\_Game\Scripts\Medina\CardboardHouseBlock.cs" />
   </ItemGroup>
   <ItemGroup>

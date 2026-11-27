@@ -112,14 +112,26 @@ MonoBehaviour:
   pauseIconSprite: {fileID: 21300000, guid: 52ddaa531ad92184ab5612b545cf3dec, type: 3}
   journalBookSprite: {fileID: 21300000, guid: 2a47ea142f914fd4092d43d5933a9bff, type: 3}
   photoSlots:
-  - caption: Bab Oudaya Gate
-    photo: {fileID: 21300000, guid: 3a18aeaf3a30445489a7c1a537fb4a8b, type: 3}
-  - caption: The Blue Alley
-    photo: {fileID: 21300000, guid: 9da4a4eef5b56524aace385c064670ad, type: 3}
-  - caption: Lwalida's House
-    photo: {fileID: 21300000, guid: 8525a94f4bfb7934495c5b6fe745a885, type: 3}
-  - caption: Unexplored
+  - entryId: lwalida_home
+    caption: "Lwalida's Old Home"
+    lockedCaption: Unexplored
     photo: {fileID: 0}
+    photoTexture: {fileID: 2800000, guid: 0cafdcb35e6d44aa0ad51b23b8e26f43, type: 3}
+  - entryId: khadija_home
+    caption: "Khadija's Home"
+    lockedCaption: Unexplored
+    photo: {fileID: 0}
+    photoTexture: {fileID: 2800000, guid: f2f8c807518734a80b6e8d13969e7533, type: 3}
+  - entryId: neighborhood_stairs
+    caption: "Neighborhood Stairs"
+    lockedCaption: Unexplored
+    photo: {fileID: 0}
+    photoTexture: {fileID: 2800000, guid: 527cb3629dcb140c09b20f8a6b834e04, type: 3}
+  - entryId: blue_sky
+    caption: "Blue Sky"
+    lockedCaption: Unexplored
+    photo: {fileID: 0}
+    photoTexture: {fileID: 2800000, guid: 74de52a9a130443ce8e75ee26ed13dec, type: 3}
   bookSlideDuration: 0.42
   bookSlideOffsetPx: 900
   hudScale: 1.59

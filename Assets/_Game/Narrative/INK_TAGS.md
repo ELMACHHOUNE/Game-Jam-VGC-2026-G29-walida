@@ -153,3 +153,35 @@ Testing:
 - In Play mode, the panel at the top of that component shows the live score, with a slider, −1 / +1, Reset and
   High buttons, and **Trigger Glitch Burst**.
 - Outside Play mode, tick **Force Active In Editor**.
+
+---
+
+## NPC conversations and endings
+
+- Each NPC's conversation is its knot (the **Dialogue Knot Name** on the NPC's interactable). When that knot
+  reaches `-> END`, the NPC is marked done: its prompt disappears and it can't be talked to again.
+  Untick **One Time Conversation** on an NPC to let the player talk to them again.
+- Every Dialogue interactable with **Counts Toward Ending** ticked is a story NPC. A new NPC you add is
+  included automatically.
+- When the last story NPC's knot ends, the game fades straight into an ending instead of returning to the medina:
+  - **Denial ending:** the denial score is **on or above** the threshold.
+  - **Acceptance ending:** the score is below it.
+- Set both knot names and the threshold on **MedinaLevelManager → Story Progress & Endings**
+  (Acceptance Ending Knot, Denial Ending Knot, Denial Ending Threshold). When the ending knot reaches `-> END`,
+  the game loads **Scene After Ending** (MainMenu by default).
+
+```ink
+=== ending_acceptance ===
+#bg:blackscreen
+#bgm:event:/BGM/OpeningBGM
+I think... I can let her go now.
+-> END
+
+=== ending_denial ===
+#bg:blackscreen
+#glitch:0.6
+She'll call again. She always does.
+-> END
+```
+
+NPC progress and the started ending are saved with the game.

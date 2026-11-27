@@ -52,6 +52,10 @@ public class NeighborhoodPhotoQuestController : MonoBehaviour
     [SerializeField] private UnityEvent onWrongLocationPhotographed;
     [SerializeField] private UnityEvent onAllPhotosCollected;
 
+    public bool IsBookOpen => _isBookOpen;
+    public bool IsComplete => _segmentCompleted;
+    public UnityEvent OnAllPhotosCollected => onAllPhotosCollected;
+
     private FMODLoopHandle _focusBeepHandle;
     private NeighborhoodPhotoTarget _focusedTarget;
     private float _lastFocusBeepTime = -10f;
@@ -108,6 +112,14 @@ public class NeighborhoodPhotoQuestController : MonoBehaviour
         {
             photoTargets = FindObjectsByType<NeighborhoodPhotoTarget>(FindObjectsInactive.Exclude);
         }
+
+        // Spots already in the Journal from earlier visits count as collected, so a new visit needs a new photo
+        foreach (NeighborhoodPhotoTarget t in photoTargets)
+        {
+            if (t != null && JournalProgress.IsUnlocked(t.JournalEntryId))
+                t.MarkCollected();
+        }
+        _collectedCount = CountCollected();
 
         SetupAudio();
         BuildHud();
@@ -187,6 +199,9 @@ public class NeighborhoodPhotoQuestController : MonoBehaviour
         {
             matchedTarget.MarkCollected();
             _collectedCount = CountCollected();
+
+            // Unlock the linked Journal entry (MinigameReturnToMedina shows the popup and returns to the medina)
+            JournalProgress.Unlock(matchedTarget.JournalEntryId);
             FMODAudioManager.PlayOneShot(detailPickEvent, FMODEvents.DetailPick, uiSfxVolume);
 
             // Display the curated team book photo in the preview card!

@@ -11,8 +11,19 @@ using FMODUnity;
 [Serializable]
 public class JournalPhotoSlotData
 {
+    [Tooltip("Journal entry that unlocks this slot (see JournalProgress). Must match the minigame's id, e.g. a " +
+             "NeighborhoodPhotoTarget's Journal Entry Id / Target Id. Leave empty for a slot that is always shown.")]
+    public string entryId = "";
     public string caption = "Unexplored";
+    [Tooltip("Caption shown while the entry is still locked.")]
+    public string lockedCaption = "Unexplored";
+    [Tooltip("Photo as a Sprite (used if set).")]
     public Sprite photo;
+    [Tooltip("Photo as a plain texture, e.g. the same curated photo the minigame uses (used when no Sprite is set).")]
+    public Texture2D photoTexture;
+
+    public bool IsUnlocked => string.IsNullOrWhiteSpace(entryId) || JournalProgress.IsUnlocked(entryId);
+    public bool HasPhoto => photo != null || photoTexture != null;
 }
 
 public class MedinaHUDController : MonoBehaviour
@@ -452,12 +463,22 @@ public class MedinaHUDController : MonoBehaviour
                 continue;
 
             JournalPhotoSlotData data = (photoSlots != null && i < photoSlots.Length) ? photoSlots[i] : null;
-            bool hasPhoto = data != null && data.photo != null;
+            bool unlocked = data != null && data.IsUnlocked;
+            bool hasPhoto = unlocked && data.HasPhoto;
 
             _photoContainers[i].EnableInClassList("photo-mount--empty", !hasPhoto);
-            _photoImages[i].style.backgroundImage = hasPhoto
-                ? new StyleBackground(data.photo)
-                : StyleKeyword.None;
+            if (!hasPhoto)
+                _photoImages[i].style.backgroundImage = StyleKeyword.None;
+            else if (data.photo != null)
+                _photoImages[i].style.backgroundImage = new StyleBackground(data.photo);
+            else
+                _photoImages[i].style.backgroundImage = new StyleBackground(data.photoTexture);
+
+            if (data != null && !unlocked)
+            {
+                _photoCaptions[i].text = string.IsNullOrWhiteSpace(data.lockedCaption) ? "Unexplored" : data.lockedCaption;
+                continue;
+            }
 
             string defaultLabel = i switch
             {

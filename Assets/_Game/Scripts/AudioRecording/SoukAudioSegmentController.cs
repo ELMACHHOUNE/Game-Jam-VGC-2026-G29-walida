@@ -30,8 +30,16 @@ public class SoukAudioSegmentController : MonoBehaviour
     [SerializeField] private string recordedLine = "Sound recorded: Souk Merchants added to journal.";
     [SerializeField] private float introSubtitleDuration = 5.0f;
 
+    [Header("Journal Link")]
+    [Tooltip("Optional: Journal entry unlocked when the target sound is recorded (shows the Journal popup and returns " +
+             "to the medina). Must match an Entry Id in Medina_HUD > Journal Photographs. Leave empty for none.")]
+    [SerializeField] private string journalEntryId = "";
+
     [Header("Events")]
     [SerializeField] private UnityEvent<RecordableSoundSource> onSoukMerchantsRecorded;
+
+    public bool IsComplete => _targetRecorded;
+    public UnityEvent<RecordableSoundSource> OnSoukMerchantsRecorded => onSoukMerchantsRecorded;
 
     private FMODLoopHandle _fmodStaticLoop;
     private float _currentStaticVolume;
@@ -176,6 +184,7 @@ public class SoukAudioSegmentController : MonoBehaviour
         if (targetSoundSource == null || source == targetSoundSource)
         {
             _targetRecorded = true;
+            JournalProgress.Unlock(journalEntryId);
             if (_objectiveText != null)
             {
                 _objectiveText.text = $"Recorded: {targetLabel}";

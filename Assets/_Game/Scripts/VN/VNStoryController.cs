@@ -448,6 +448,34 @@ public class VNStoryController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// For every captured journal entry (photo / recording), sets the Ink boolean captured_&lt;entryId&gt;
+    /// to true when the story declares it, e.g. VAR captured_khadija_home = false.
+    /// Undeclared names are skipped, so declaring them is optional.
+    /// </summary>
+    public void SyncCapturedEntriesToInk()
+    {
+        EnsureStoryInitialized();
+        if (_story == null) return;
+
+        foreach (string entryId in JournalProgress.ToList())
+        {
+            string varName = MinigameSession.InkCapturedPrefix + entryId;
+            if (_story.variablesState.GlobalVariableExistsWithName(varName))
+                _story.variablesState[varName] = true;
+        }
+    }
+
+    /// <summary>True when the compiled Ink story contains a knot with this name.</summary>
+    public bool HasKnot(string knotName)
+    {
+        if (string.IsNullOrWhiteSpace(knotName))
+            return false;
+
+        EnsureStoryInitialized();
+        return _story != null && _story.KnotContainerWithName(knotName.Trim()) != null;
+    }
+
     public void JumpToKnot(string knotName, bool clearStageFirst = true)
     {
         if (string.IsNullOrWhiteSpace(knotName))
@@ -1052,6 +1080,7 @@ public class VNStoryController : MonoBehaviour
             eventCgId = _currentCgId,
             bgmId = _requestedBgmPath, // the Ink-requested track; the horror swap is re-applied on load
             denialScore = DenialScore,
+            unlockedJournalEntries = JournalProgress.ToList(),
             activeSpeakerId = stageView.GetActiveSpeakerId(),
             characters = stageView.CaptureCharacterStates(),
             // A narration line is shown over the world, so a save taken during it is an exploration save.
@@ -1096,6 +1125,7 @@ public class VNStoryController : MonoBehaviour
         _story = new Story(inkJsonAsset.text);
         _story.state.LoadJson(data.inkStateJson);
         _denialFallback = data.denialScore; // ignored when Ink declares the variable (its value lives in inkStateJson)
+        JournalProgress.LoadFrom(data.unlockedJournalEntries);
         RefreshDenialScore(forceNotify: true);
 
         _visitedChoicePaths.Clear();

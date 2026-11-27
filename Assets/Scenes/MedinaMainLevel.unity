@@ -1006,8 +1006,10 @@ MonoBehaviour:
   displayTitle: Hicham (Upper Neighborhood)
   kind: 0
   targetSceneName: 
-  dialogueKnotName: scene2_hicham
+  dialogueKnotName: ch2_ouadya_neighborhood_slide2
   interactionRadius: 3.2
+  oneTimeConversation: 1
+  countsTowardEnding: 1
   promptVisual: {fileID: 1164208452}
   promptBobHeight: 0.14
   promptBobSpeed: 4.5
@@ -4442,10 +4444,17 @@ MonoBehaviour:
   restoreSavedPositionOnStart: 1
   lockExplorationDuringDialogue: 1
   clearStageOnDialogueJump: 1
+  acceptanceEndingKnot: 
+  denialEndingKnot: 
+  denialEndingThreshold: 5
+  sceneAfterEnding: MainMenu
   onDialogueRequested:
     m_PersistentCalls:
       m_Calls: []
   onSceneRequested:
+    m_PersistentCalls:
+      m_Calls: []
+  onEndingStarted:
     m_PersistentCalls:
       m_Calls: []
 --- !u!4 &284462048
@@ -8790,6 +8799,8 @@ MonoBehaviour:
   targetSceneName: PhotographingMinigame
   dialogueKnotName: 
   interactionRadius: 3.4
+  oneTimeConversation: 1
+  countsTowardEnding: 1
   promptVisual: {fileID: 190115070}
   promptBobHeight: 0.14
   promptBobSpeed: 4.5
@@ -9431,6 +9442,8 @@ MonoBehaviour:
   targetSceneName: AudioRecordingMinigame
   dialogueKnotName: 
   interactionRadius: 3.4
+  oneTimeConversation: 1
+  countsTowardEnding: 1
   promptVisual: {fileID: 224517848}
   promptBobHeight: 0.14
   promptBobSpeed: 4.5
@@ -10482,6 +10495,8 @@ MonoBehaviour:
   targetSceneName: AudioRecordingMinigame
   dialogueKnotName: 
   interactionRadius: 3.4
+  oneTimeConversation: 1
+  countsTowardEnding: 1
   promptVisual: {fileID: 1920603501}
   promptBobHeight: 0.14
   promptBobSpeed: 4.5
@@ -15728,8 +15743,10 @@ MonoBehaviour:
   displayTitle: Butcher Allal (Oudaya Souk)
   kind: 0
   targetSceneName: 
-  dialogueKnotName: ch1_apartment
+  dialogueKnotName: ch3_ouadya_souq
   interactionRadius: 3.2
+  oneTimeConversation: 1
+  countsTowardEnding: 1
   promptVisual: {fileID: 1749538328}
   promptBobHeight: 0.14
   promptBobSpeed: 4.5
@@ -19201,6 +19218,8 @@ MonoBehaviour:
   targetSceneName: 
   dialogueKnotName: ch2_ouadya_neighborhood
   interactionRadius: 3.2
+  oneTimeConversation: 1
+  countsTowardEnding: 1
   promptVisual: {fileID: 302943296}
   promptBobHeight: 0.14
   promptBobSpeed: 4.5
@@ -26026,6 +26045,8 @@ MonoBehaviour:
   targetSceneName: PhotographingMinigame
   dialogueKnotName: 
   interactionRadius: 3.4
+  oneTimeConversation: 1
+  countsTowardEnding: 1
   promptVisual: {fileID: 647495671}
   promptBobHeight: 0.14
   promptBobSpeed: 4.5
@@ -28704,6 +28725,26 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 732687192256267711, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: characterDatabase.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 732687192256267711, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: 'characterDatabase.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 921f72a022362429faf31a5a2ad95421, type: 2}
+    - target: {fileID: 732687192256267711, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: 'characterDatabase.Array.data[1]'
+      value: 
+      objectReference: {fileID: 11400000, guid: fb92ad59be7804beab1c6983bc6f8421, type: 2}
+    - target: {fileID: 732687192256267711, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: 'characterDatabase.Array.data[2]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 598054dda3fbf485fb4a5ebb4b0c785b, type: 2}
+    - target: {fileID: 732687192256267711, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
+      propertyPath: 'characterDatabase.Array.data[3]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 598054dda3fbf485fb4a5ebb4b0c785b, type: 2}
     - target: {fileID: 1470137377207681321, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
       propertyPath: inkJsonAsset
       value: 
@@ -28766,7 +28807,7 @@ PrefabInstance:
       objectReference: {fileID: 439736325}
     - target: {fileID: 5839204716253948167, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
       propertyPath: forceActiveInEditor
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9165743868256141961, guid: c5ebf4b870bb7c14aa10688cf57dbdf3, type: 3}
       propertyPath: m_Name

@@ -32,12 +32,32 @@ public class MedinaLevelManager : MonoBehaviour
     [SerializeField] private bool lockExplorationDuringDialogue = true;
     [SerializeField] private bool clearStageOnDialogueJump = true;
 
+    [Header("Story Progress & Endings")]
+    [Tooltip("Ink knot played after every story NPC has been talked to, when the denial score is BELOW the threshold.")]
+    [SerializeField] private string acceptanceEndingKnot = "";
+    [Tooltip("Ink knot played after every story NPC has been talked to, when the denial score is ON or ABOVE the threshold.")]
+    [SerializeField] private string denialEndingKnot = "";
+    [Tooltip("Denial ending when the denial score is >= this value, acceptance ending when it is lower.")]
+    [SerializeField] private int denialEndingThreshold = 5;
+    [Tooltip("Scene loaded once the ending has finished.")]
+    [SerializeField] private string sceneAfterEnding = "MainMenu";
+
     [Header("Events")]
     [SerializeField] private UnityEvent<string> onDialogueRequested;
     [SerializeField] private UnityEvent<string> onSceneRequested;
+    [Tooltip("Raised when the ending starts: true = denial ending, false = acceptance ending.")]
+    [SerializeField] private UnityEvent<bool> onEndingStarted;
 
     private MedinaInteractable[] _sceneInteractables;
     private MotionHandle _ambienceTween;
+
+    // Story NPC progress (saved): which NPC conversations are finished, and whether the ending has begun
+    private readonly System.Collections.Generic.HashSet<string> _completedNpcIds = new(System.StringComparer.OrdinalIgnoreCase);
+    private MedinaInteractable _activeNpc;
+    private bool _endingStarted;
+
+    public bool IsEndingInProgress => _endingStarted;
+    public string SceneAfterEnding => sceneAfterEnding;
 
     public bool IsExplorationPaused { get; private set; }
     public string LastTriggeredAction { get; private set; }
@@ -141,6 +161,9 @@ public class MedinaLevelManager : MonoBehaviour
         switch (interactable.Kind)
         {
             case MedinaInteractableKind.Dialogue:
+                if (interactable.IsConversationDone && interactable.OneTimeConversation)
+                    break; // already talked to: can't start it again
+                _activeNpc = interactable;
                 TriggerDialogue(interactable.DialogueKnotName, interactable.DisplayTitle, interactable.transform);
                 break;
 
@@ -205,8 +228,11 @@ public class MedinaLevelManager : MonoBehaviour
 
         // The flow controller fades to black, tears the stage down, restores the camera
         // and then calls EnterExploration(). Hiding the stage here would reveal the world early.
+        // It also calls NotifyDialogueFinished() itself, before deciding whether the ending plays.
         if (HasFlowController)
             return;
+
+        NotifyDialogueFinished();
 
         if (stageView != null)
         {
@@ -220,9 +246,85 @@ public class MedinaLevelManager : MonoBehaviour
         ResumeExploration();
     }
 
+    // =========================================================================
+    // STORY NPC PROGRESS & ENDINGS
+    // =========================================================================
+
+    private MedinaInteractable[] SceneInteractables =>
+        _sceneInteractables ??= FindObjectsByType<MedinaInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+    /// <summary>
+    /// Called when a VN conversation has been played to the end. If it was started from a story NPC,
+    /// that NPC is marked done (its prompt disappears and it can't be talked to again).
+    /// </summary>
+    public void NotifyDialogueFinished()
+    {
+        MedinaInteractable npc = _activeNpc;
+        _activeNpc = null;
+        if (npc == null || npc.Kind != MedinaInteractableKind.Dialogue || string.IsNullOrWhiteSpace(npc.InteractableId))
+            return;
+
+        _completedNpcIds.Add(npc.InteractableId);
+        npc.MarkConversationDone();
+    }
+
+    /// <summary>True once every story NPC in the level has been talked to.</summary>
+    public bool AllStoryNpcsDone
+    {
+        get
+        {
+            int storyNpcs = 0;
+            foreach (MedinaInteractable i in SceneInteractables)
+            {
+                if (i == null || !i.IsStoryNpc) continue;
+                storyNpcs++;
+                if (!_completedNpcIds.Contains(i.InteractableId)) return false;
+            }
+            return storyNpcs > 0;
+        }
+    }
+
+    /// <summary>
+    /// When every story NPC is done and no ending has started yet, picks the ending from the denial score
+    /// (on/above threshold = denial, below = acceptance), marks it started and returns its knot.
+    /// </summary>
+    public bool TryBeginEnding(out string endingKnot, out bool isDenialEnding)
+    {
+        endingKnot = null;
+        isDenialEnding = false;
+        if (_endingStarted || !AllStoryNpcsDone)
+            return false;
+
+        int score = storyController != null ? storyController.DenialScore : 0;
+        isDenialEnding = score >= denialEndingThreshold;
+        endingKnot = isDenialEnding ? denialEndingKnot : acceptanceEndingKnot;
+        _endingStarted = true;
+
+        MedinaExitDoor.SetGameCompleted(true);
+        Debug.Log($"[MedinaLevelManager] All story NPCs done. Denial score {score} (threshold {denialEndingThreshold}) -> " +
+                  $"{(isDenialEnding ? "DENIAL" : "ACCEPTANCE")} ending '{endingKnot}'.");
+        onEndingStarted?.Invoke(isDenialEnding);
+        return true;
+    }
+
+    private void ApplyNpcProgressToScene()
+    {
+        foreach (MedinaInteractable i in SceneInteractables)
+        {
+            if (i != null && i.Kind == MedinaInteractableKind.Dialogue && _completedNpcIds.Contains(i.InteractableId))
+                i.MarkConversationDone();
+        }
+    }
+
     private void HandleCapturingSaveData(VNSaveData data)
     {
-        if (data == null || playerController == null)
+        if (data == null)
+            return;
+
+        data.completedNpcIds = new System.Collections.Generic.List<string>(_completedNpcIds);
+        data.endingStarted = _endingStarted;
+
+        if (playerController == null)
             return;
 
         data.hasPlayerPosition = true;
@@ -231,7 +333,19 @@ public class MedinaLevelManager : MonoBehaviour
 
     private void HandleSaveDataLoaded(VNSaveData data)
     {
-        if (data == null || !data.hasPlayerPosition || playerController == null)
+        if (data == null)
+            return;
+
+        _completedNpcIds.Clear();
+        if (data.completedNpcIds != null)
+        {
+            foreach (string id in data.completedNpcIds)
+                if (!string.IsNullOrWhiteSpace(id)) _completedNpcIds.Add(id);
+        }
+        _endingStarted = data.endingStarted;
+        ApplyNpcProgressToScene();
+
+        if (!data.hasPlayerPosition || playerController == null)
             return;
 
         // A loaded save wins over the minigame return point.
@@ -251,12 +365,16 @@ public class MedinaLevelManager : MonoBehaviour
             _hasSavedReturnPosition = true;
         }
 
-        if (storyController != null)
-            storyController.CacheInkStateForSceneTransition();
+        // Snapshot the medina in memory (story, player position, NPC progress, intro flag, denial score,
+        // journal). The minigame scene stays isolated; on return the medina rebuilds itself from this
+        // snapshot plus the minigame's results. No save file is written.
+        VNSaveData snapshot = storyController != null ? storyController.CaptureSaveData("Medina (minigame)") : null;
+        MinigameSession.BeginMinigame(sceneName, snapshot);
 
         onSceneRequested?.Invoke(sceneName);
 
-        if (!string.IsNullOrWhiteSpace(sceneName) && SceneUtility.GetBuildIndexByScenePath(sceneName) >= 0)
+        // CanStreamedLevelBeLoaded accepts a scene name (GetBuildIndexByScenePath expects a full path)
+        if (!string.IsNullOrWhiteSpace(sceneName) && Application.CanStreamedLevelBeLoaded(sceneName))
         {
             SceneManager.LoadScene(sceneName);
         }

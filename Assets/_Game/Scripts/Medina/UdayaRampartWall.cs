@@ -481,6 +481,11 @@ public class UdayaRampartWall : MonoBehaviour
         {
             _shadowRenderer.sharedMaterial = mat;
         }
+        else
+        {
+            // Never leave a renderer without a material: it would draw as magenta (missing shader)
+            _shadowRenderer.enabled = false;
+        }
 
         _shadowRenderer.sortingOrder = -29200;
         _shadowRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -490,9 +495,15 @@ public class UdayaRampartWall : MonoBehaviour
     private static Material GetSharedShadowMaterial()
     {
         if (SharedShadowMaterial != null) return SharedShadowMaterial;
-        Shader sh = Shader.Find("Medina/GroundCastShadow");
-        if (sh == null) return null;
-        SharedShadowMaterial = new Material(sh);
+        // Loaded from Resources so the shader is guaranteed to ship (Shader.Find alone gets stripped in builds)
+        Material template = Resources.Load<Material>("Mat_MedinaGroundCastShadow");
+        Shader sh = template != null ? template.shader : Shader.Find("Medina/GroundCastShadow");
+        if (sh == null || !sh.isSupported)
+        {
+            Debug.LogWarning("[UdayaRampartWall] Ground shadow shader 'Medina/GroundCastShadow' is missing from this build; wall shadows disabled.");
+            return null;
+        }
+        SharedShadowMaterial = template != null ? new Material(template) : new Material(sh);
         SharedShadowMaterial.name = "Mat_UdayaWallShadow_Runtime";
         SharedShadowMaterial.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
         SharedShadowMaterial.SetColor("_ShadowColor", new Color(0.09f, 0.13f, 0.25f, 0.44f));

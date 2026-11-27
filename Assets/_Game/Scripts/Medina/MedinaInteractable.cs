@@ -22,6 +22,12 @@ public class MedinaInteractable : MonoBehaviour
     [SerializeField] private string dialogueKnotName = "";
     [SerializeField] private float interactionRadius = 2.6f;
 
+    [Header("Story NPC (Dialogue only)")]
+    [Tooltip("Once this conversation has been played to the end, the NPC can't be talked to again and its prompt is hidden.")]
+    [SerializeField] private bool oneTimeConversation = true;
+    [Tooltip("Finishing this conversation counts toward the ending. When every counted NPC is done, the ending plays.")]
+    [SerializeField] private bool countsTowardEnding = true;
+
     [Header("Prompt Visual")]
     [SerializeField] private Transform promptVisual;
     [SerializeField] private float promptBobHeight = 0.14f;
@@ -42,6 +48,24 @@ public class MedinaInteractable : MonoBehaviour
     public string DialogueKnotName => dialogueKnotName;
     public float InteractionRadius => interactionRadius;
     public bool IsHighlighted => _isHighlighted;
+    public bool OneTimeConversation => oneTimeConversation;
+    /// <summary>A Dialogue interactable whose conversation counts toward the ending.</summary>
+    public bool IsStoryNpc => kind == MedinaInteractableKind.Dialogue && countsTowardEnding;
+    public bool IsConversationDone { get; private set; }
+
+    /// <summary>
+    /// Marks the conversation as finished. A one-time NPC hides its prompt and disables itself,
+    /// which removes it from MedinaInteractionController's candidates (it skips disabled interactables).
+    /// </summary>
+    public void MarkConversationDone()
+    {
+        IsConversationDone = true;
+        if (!oneTimeConversation || kind != MedinaInteractableKind.Dialogue)
+            return;
+
+        SetHighlighted(false);
+        enabled = false;
+    }
 
     private void Awake()
     {

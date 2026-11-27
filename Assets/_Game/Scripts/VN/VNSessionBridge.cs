@@ -5,7 +5,9 @@ public enum VNLaunchMode
 {
     NewGame,
     ContinueLatest,
-    LoadSpecificSlot
+    LoadSpecificSlot,
+    /// <summary>Coming back from a minigame scene: restore the medina from MinigameSession's in-memory snapshot.</summary>
+    ReturnFromMinigame
 }
 
 public static class VNSessionBridge

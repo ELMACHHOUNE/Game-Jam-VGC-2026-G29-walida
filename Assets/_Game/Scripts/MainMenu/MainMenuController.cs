@@ -366,6 +366,7 @@ public class MainMenuController : MonoBehaviour
         VNSessionBridge.CachedInkStateJson = string.Empty;
         VNSessionBridge.TargetSlotId = string.Empty;
         VNSessionBridge.LaunchMode = VNLaunchMode.NewGame;
+        JournalProgress.Clear();
         TransitionToGameScene();
     }
 
